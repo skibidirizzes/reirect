@@ -1,4 +1,4 @@
-import type { Settings } from './types.ts';
+import type { Settings } from './types';
 
 // WARNING: For development/demonstration purposes only. 
 // In a real production application, this API token should be stored securely 
@@ -48,9 +48,9 @@ export const CARD_STYLES = [
     { id: 'minimal', name: 'Minimal' },
     { id: 'elegant', name: 'Elegant' },
     { id: 'sleek-dark', name: 'Sleek Dark' },
-    { id: 'polaroid', name: 'Polaroid' },
+    { id: 'photo-frame', name: 'Photo Frame' },
     { id: 'terminal', name: 'Terminal' },
     { id: 'retro-tv', name: 'Retro TV' },
-    { id: 'glow', name: 'Futuristic Glow' },
+    { id: 'luminous', name: 'Luminous' },
     { id: 'video-player', name: 'Video Player' },
 ];
