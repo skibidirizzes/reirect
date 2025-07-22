@@ -286,6 +286,9 @@ const SettingsPage: React.FC = () => {
             });
 
             const jsonString = response.text;
+            if (!jsonString) {
+                throw new Error("AI returned an empty response.");
+            }
             const generated = JSON.parse(jsonString);
             
             setSettings(prev => ({ ...prev, ...generated }));
