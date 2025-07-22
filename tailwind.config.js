@@ -44,6 +44,11 @@ export default {
         'flicker': {
           '0%, 100%': { opacity: '1' },
           '50%': { opacity: '0.95' },
+        },
+        'background-pan': {
+          '0%': { backgroundPosition: '0% 50%' },
+          '50%': { backgroundPosition: '100% 50%' },
+          '100%': { backgroundPosition: '0% 50%' },
         }
       },
       animation: {
@@ -55,6 +60,7 @@ export default {
         'blink-caret': 'blink-caret .75s step-end infinite',
         'glow': 'glow 1.5s ease-in-out infinite alternate',
         'flicker': 'flicker 0.1s infinite',
+        'background-pan': 'background-pan 15s ease infinite',
       }
     }
   },

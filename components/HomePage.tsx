@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { Link } from 'react-router-dom';
 import { useSettings, useNotification } from '../contexts/SettingsContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import type { Settings } from '../types';
 import RedirectPage from './RedirectPage';
 import { BITLY_API_TOKEN, BITLY_API_URL } from '../constants';
@@ -28,6 +29,7 @@ const RedirectCard: React.FC<{
 }> = ({ config, clicks, onCopy, onPreview, onQrCode, onDelete }) => {
     const [menuOpen, setMenuOpen] = React.useState(false);
     const menuRef = React.useRef<HTMLDivElement>(null);
+    const { t } = useLanguage();
 
     React.useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -63,13 +65,13 @@ const RedirectCard: React.FC<{
                         {menuOpen && (
                             <div className="absolute top-full right-0 mt-2 w-48 bg-slate-700 border border-slate-600 rounded-lg shadow-2xl z-10 animate-scale-in origin-top-right">
                                 <Link to={`/edit/${config.id}`} className="flex items-center gap-3 px-4 py-2 text-sm text-slate-300 hover:bg-slate-600/50 w-full text-left transition-colors rounded-t-lg">
-                                    <EditIcon /> Edit
+                                    <EditIcon /> {t('edit')}
                                 </Link>
                                 <button onClick={() => { setMenuOpen(false); if(config.bitlyLink) onQrCode(config); }} className="flex items-center gap-3 px-4 py-2 text-sm text-slate-300 hover:bg-slate-600/50 w-full text-left transition-colors" disabled={!config.bitlyLink}>
-                                    <QrCodeIcon /> QR Code
+                                    <QrCodeIcon /> {t('home_qr_code')}
                                 </button>
                                 <button onClick={() => { setMenuOpen(false); onDelete(config.id); }} className="flex items-center gap-3 px-4 py-2 text-sm text-red-400 hover:bg-red-500/20 w-full text-left transition-colors rounded-b-lg">
-                                    <TrashIcon /> Delete
+                                    <TrashIcon /> {t('delete')}
                                 </button>
                             </div>
                         )}
@@ -78,15 +80,15 @@ const RedirectCard: React.FC<{
                  <div className="flex items-center gap-2 text-slate-400 bg-slate-900/50 p-2 rounded-lg">
                     <BarChartIcon />
                     <span className="font-medium text-white">{clicks ?? '--'}</span>
-                    <span className="text-sm">Total Clicks</span>
+                    <span className="text-sm">{t('home_total_clicks')}</span>
                 </div>
             </div>
             <div className="border-t border-slate-700/50 p-3 flex items-center gap-2">
                  <button onClick={() => onPreview(config)} className="flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm font-semibold text-slate-300 bg-slate-700/50 hover:bg-slate-700 rounded-md transition-colors">
-                    <EyeIcon /> Preview
+                    <EyeIcon /> {t('preview')}
                  </button>
                  <button onClick={() => config.bitlyLink && onCopy(config.bitlyLink)} disabled={!config.bitlyLink} className="flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm font-semibold rounded-md transition-colors bg-indigo-600 text-white hover:bg-indigo-500 disabled:bg-indigo-400 disabled:cursor-not-allowed">
-                    <CopyIcon /> Copy Link
+                    <CopyIcon /> {t('copy_link')}
                  </button>
             </div>
         </div>
@@ -96,6 +98,7 @@ const RedirectCard: React.FC<{
 const HomePage: React.FC = () => {
   const { configs, deleteConfig } = useSettings();
   const addNotification = useNotification();
+  const { lang, setLang, t } = useLanguage();
   const [previewConfig, setPreviewConfig] = React.useState<Settings | null>(null);
   const [qrCodeConfig, setQrCodeConfig] = React.useState<Settings | null>(null);
   const [clickCounts, setClickCounts] = React.useState<Record<string, number>>({});
@@ -154,10 +157,10 @@ const HomePage: React.FC = () => {
 
   const handleCopyLink = (link: string) => {
     navigator.clipboard.writeText(link).then(() => {
-        addNotification({ type: 'success', message: 'Link copied to clipboard!' });
+        addNotification({ type: 'success', message: 'notification_link_copied' });
     }).catch(err => {
         console.error('Failed to copy link: ', err);
-        addNotification({ type: 'error', message: 'Failed to copy link.' });
+        addNotification({ type: 'error', message: 'notification_link_copy_failed' });
     });
   };
   
@@ -170,9 +173,9 @@ const HomePage: React.FC = () => {
   }
   
   const handleDelete = (id: string) => {
-      if(window.confirm("Are you sure you want to delete this redirect? This action cannot be undone.")){
+      if(window.confirm(t('home_delete_confirm'))){
           deleteConfig(id);
-          addNotification({ type: 'success', message: 'Redirect deleted.' });
+          addNotification({ type: 'success', message: 'notification_redirect_deleted' });
       }
   }
   
@@ -185,11 +188,15 @@ const HomePage: React.FC = () => {
                     <LinkIcon />
                 </div>
                 <div>
-                    <h1 className="text-3xl font-bold text-white">Link Director</h1>
-                    <p className="text-slate-400">Manage your custom redirect links.</p>
+                    <h1 className="text-3xl font-bold text-white">{t('home_title')}</h1>
+                    <p className="text-slate-400">{t('home_subtitle')}</p>
                 </div>
             </div>
             <div className="flex items-center gap-3">
+              <div className="flex items-center bg-slate-700/50 rounded-lg">
+                <button onClick={() => setLang('en')} className={`px-3 py-3 text-sm font-bold rounded-l-lg transition-colors ${lang === 'en' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-700'}`}>EN</button>
+                <button onClick={() => setLang('nl')} className={`px-3 py-3 text-sm font-bold rounded-r-lg transition-colors ${lang === 'nl' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-700'}`}>NL</button>
+              </div>
               <button onClick={fetchStats} disabled={isLoadingStats} className="flex items-center gap-2 px-4 py-3 bg-slate-700/50 text-slate-300 font-semibold rounded-lg hover:bg-slate-700 transition-colors disabled:opacity-50 disabled:cursor-wait">
                 <RefreshCwIcon className={isLoadingStats ? 'animate-spin' : ''}/>
               </button>
@@ -199,7 +206,7 @@ const HomePage: React.FC = () => {
                 aria-label="Create New Redirect"
               >
                 <PlusIcon />
-                Create New
+                {t('home_create_new')}
               </Link>
             </div>
         </header>
@@ -209,14 +216,14 @@ const HomePage: React.FC = () => {
             <div className="inline-block p-5 bg-slate-700/50 rounded-full mb-6">
                 <LinkIcon />
             </div>
-            <h2 className="text-2xl font-bold text-white">No redirects yet!</h2>
-            <p className="text-slate-400 mt-2 mb-6 max-w-sm mx-auto">Your created redirects will appear here. Click the button below to get started.</p>
+            <h2 className="text-2xl font-bold text-white">{t('home_no_redirects_title')}</h2>
+            <p className="text-slate-400 mt-2 mb-6 max-w-sm mx-auto">{t('home_no_redirects_subtitle')}</p>
             <Link
               to="/new"
               className="inline-flex items-center gap-2 px-5 py-3 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-500 transition-colors shadow-lg shadow-indigo-600/20"
             >
               <PlusIcon />
-              Create Your First Redirect
+              {t('home_create_first')}
             </Link>
           </div>
         ) : (
@@ -247,8 +254,8 @@ const HomePage: React.FC = () => {
                 onClick={e => e.stopPropagation()}
             >
                 <div className="p-3 border-b border-slate-700 flex justify-between items-center bg-slate-800/70 flex-shrink-0">
-                    <h3 className="font-semibold text-white text-lg">Live Preview</h3>
-                    <button onClick={() => setPreviewConfig(null)} className="px-3 py-1 text-sm bg-slate-700 text-slate-300 rounded-md hover:bg-slate-600 transition-colors">Close</button>
+                    <h3 className="font-semibold text-white text-lg">{t('preview')}</h3>
+                    <button onClick={() => setPreviewConfig(null)} className="px-3 py-1 text-sm bg-slate-700 text-slate-300 rounded-md hover:bg-slate-600 transition-colors">{t('close')}</button>
                 </div>
                 <div className="w-full h-full border-0 relative">
                     <RedirectPage 

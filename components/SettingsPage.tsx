@@ -1,8 +1,10 @@
 import * as React from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
+import clsx from 'clsx';
 import type { Settings, CustomImageAssets } from '../types';
 import { useSettings, useNotification } from '../contexts/SettingsContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import { NEW_REDIRECT_TEMPLATE, BITLY_API_TOKEN, BITLY_API_URL, CARD_STYLES, APP_BASE_URL } from '../constants';
 import RedirectPage from './RedirectPage';
 
@@ -13,6 +15,8 @@ const LoadingSpinner: React.FC<{className?: string}> = ({className}) => (<svg xm
 const InfoIcon: React.FC<{className?: string}> = ({className}) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10" /><line x1="12" y1="16" x2="12" y2="12" /><line x1="12" y1="8" x2="12.01" y2="8" /></svg>);
 const UploadCloudIcon: React.FC<{className?: string}> = ({className}) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/><path d="M12 12v9"/><path d="m16 16-4-4-4 4"/></svg>);
 const XIcon: React.FC<{className?: string}> = ({className}) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>);
+const PlusIcon: React.FC<{className?: string}> = ({className}) => (<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M5 12h14"/><path d="M12 5v14"/></svg>);
+
 
 const InputGroup: React.FC<{ label: string, description?: string, children: React.ReactNode }> = ({ label, description, children }) => (
     <div className="space-y-2">
@@ -79,6 +83,7 @@ const Section: React.FC<{ title: string, children: React.ReactNode, action?: Rea
 const ImageUploadZone: React.FC<{ onFileUpload: (dataUrl: string) => void }> = ({ onFileUpload }) => {
     const [isDragging, setIsDragging] = React.useState(false);
     const inputRef = React.useRef<HTMLInputElement>(null);
+    const { t } = useLanguage();
 
     const handleFile = (file: File) => {
         if (file && file.type.startsWith('image/')) {
@@ -120,8 +125,8 @@ const ImageUploadZone: React.FC<{ onFileUpload: (dataUrl: string) => void }> = (
             <input type="file" ref={inputRef} onChange={handleInputChange} accept="image/*" className="hidden" />
             <div className="text-center">
                 <UploadCloudIcon className="w-10 h-10 text-slate-400 mx-auto mb-2" />
-                <p className="text-slate-300 font-semibold">Drag & drop or click to upload</p>
-                <p className="text-xs text-slate-400">PNG, JPG, GIF, WEBP</p>
+                <p className="text-slate-300 font-semibold">{t('settings_upload_prompt')}</p>
+                <p className="text-xs text-slate-400">{t('settings_upload_types')}</p>
             </div>
         </div>
     );
@@ -166,53 +171,26 @@ const MapUpdater: React.FC<{ position: [number, number] }> = ({ position }) => {
 };
 
 const DataCapturePreview: React.FC = () => {
-    const [location, setLocation] = React.useState<{lat: number, lon: number} | null>(null);
-    const [address, setAddress] = React.useState<string | null>(null);
-    const [isFetchingAddress, setIsFetchingAddress] = React.useState(false);
-    const [battery, setBattery] = React.useState<{level: number, charging: boolean} | null>(null);
-    const [error, setError] = React.useState<string | null>(null);
-    const userAgent = navigator.userAgent;
-
-    React.useEffect(() => {
-        navigator.geolocation.getCurrentPosition(
-            (pos) => {
-                const newLocation = { lat: pos.coords.latitude, lon: pos.coords.longitude };
-                setLocation(newLocation);
-                setIsFetchingAddress(true);
-                fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${newLocation.lat}&lon=${newLocation.lon}`)
-                    .then(res => res.json())
-                    .then(data => setAddress(data.display_name || 'Address not found.'))
-                    .catch(() => setAddress('Could not fetch address.'))
-                    .finally(() => setIsFetchingAddress(false));
-            },
-            (err) => setError(`Location Error: ${err.message}`)
-        );
-
-        if ('getBattery' in navigator && typeof (navigator as any).getBattery === 'function') {
-            (navigator as any).getBattery().then((bat: any) => {
-                setBattery({ level: Math.round(bat.level * 100), charging: bat.charging });
-            });
-        }
-    }, []);
-
+    const { t } = useLanguage();
+    const location = { lat: 34.0522, lon: -118.2437 }; // Static Los Angeles coordinates
+    const address = "Los Angeles, CA, USA (Simulated)";
+    const battery = { level: 88, charging: true };
+    const userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36 (Simulated)";
+    
     const renderItem = (label: string, value: React.ReactNode) => (
         <div className="flex justify-between items-center text-sm py-2 border-b border-slate-700/50 last:border-b-0">
             <dt className="font-medium text-slate-300">{label}</dt>
             <dd className="text-slate-400 font-mono text-right truncate">{value}</dd>
         </div>
     );
-    
-    if (error) {
-        return <div className="text-red-400 text-sm p-4 bg-red-900/20 rounded-lg">{error}</div>;
-    }
 
     return (
         <div className="space-y-4">
             <div className="bg-slate-900/50 rounded-lg p-4">
                  <dl>
-                    {renderItem('User Agent', <span className="max-w-[200px] truncate block">{userAgent}</span>)}
-                    {renderItem('Battery', battery ? `${battery.level}% ${battery.charging ? '(Charging)' : ''}` : 'N/A')}
-                    {renderItem('Approx. Location', isFetchingAddress ? 'Fetching...' : (address ?? 'Unavailable'))}
+                    {renderItem(t('settings_data_preview_ua'), <span className="max-w-[200px] truncate block">{userAgent}</span>)}
+                    {renderItem(t('settings_data_preview_battery'), battery ? `${battery.level}% ${battery.charging ? t('settings_data_preview_battery_charging') : ''}` : 'N/A')}
+                    {renderItem(t('settings_data_preview_location'), address ?? t('settings_data_preview_location_unavailable'))}
                 </dl>
             </div>
             {location && (
@@ -238,6 +216,7 @@ const SettingsPage: React.FC = () => {
     const navigate = useNavigate();
     const { getConfig, addConfig, updateConfig, customImageAssets, addCustomAsset, deleteCustomAsset } = useSettings();
     const addNotification = useNotification();
+    const { t } = useLanguage();
     
     const [settings, setSettings] = React.useState<Omit<Settings, 'id'> | Settings>(() => {
         if (id) {
@@ -265,6 +244,20 @@ const SettingsPage: React.FC = () => {
             captureInfo: { ...prev.captureInfo, [name]: checked }
         }));
     };
+    
+    const handleGradientColorChange = (index: number, newColor: string) => {
+        const newColors = [...settings.gradientColors];
+        newColors[index] = newColor;
+        setSettings(p => ({...p, gradientColors: newColors}));
+    };
+    
+    const addGradientColor = () => {
+        setSettings(p => ({...p, gradientColors: [...p.gradientColors, '#ffffff']}));
+    };
+
+    const removeGradientColor = (index: number) => {
+        setSettings(p => ({...p, gradientColors: p.gradientColors.filter((_, i) => i !== index)}));
+    };
 
     const handleAssetUpload = (type: keyof CustomImageAssets, dataUrl: string) => {
         addCustomAsset(type, dataUrl);
@@ -286,6 +279,7 @@ const SettingsPage: React.FC = () => {
             cardStyle: settingsData.cardStyle,
             redirectDelay: settingsData.redirectDelay,
             captureInfo: settingsData.captureInfo,
+            gradientColors: settingsData.gradientColors,
         };
         const base64Data = btoa(JSON.stringify(payload));
         return `${APP_BASE_URL}/#/view/${base64Data}`;
@@ -314,14 +308,14 @@ const SettingsPage: React.FC = () => {
             const data = await response.json();
             return { bitlyLink: data.link, bitlyId: data.id };
         } catch (error: any) {
-            addNotification({ type: 'error', message: `Bitly Error: ${error.message}` });
+            addNotification({ type: 'error', message: `notification_bitly_error,{"error":"${error.message}"}` });
             return {};
         }
     };
 
     const handleSave = async () => {
         if (!settings.name || !settings.redirectUrl) {
-            addNotification({ type: 'error', message: 'Please provide a Name and Redirect URL.' });
+            addNotification({ type: 'error', message: 'notification_missing_fields' });
             return;
         }
         setIsSaving(true);
@@ -332,7 +326,6 @@ const SettingsPage: React.FC = () => {
         };
         
         const existingConfig = id ? getConfig(id) : undefined;
-        // Re-generate Bitly link if the settings relevant to the redirect page change, not just the URL.
         const relevantSettingsChanged = !existingConfig || JSON.stringify(generateShareableUrl(existingConfig)) !== JSON.stringify(generateShareableUrl(settings));
 
         if (!linkData.bitlyLink || relevantSettingsChanged) {
@@ -340,7 +333,6 @@ const SettingsPage: React.FC = () => {
         }
         
         let finalSettings: Omit<Settings, 'id'> = {...settings, ...linkData};
-        // remove id property if it exists, as it's not part of the data model in firestore document fields
         if ('id' in finalSettings) {
             const { id: _, ...remaningSettings } = finalSettings as Settings;
             finalSettings = remaningSettings;
@@ -348,10 +340,10 @@ const SettingsPage: React.FC = () => {
         
         if (id) {
             await updateConfig(id, finalSettings);
-            addNotification({ type: 'success', message: 'Redirect updated successfully!' });
+            addNotification({ type: 'success', message: 'notification_redirect_updated' });
         } else {
             await addConfig(finalSettings);
-            addNotification({ type: 'success', message: 'Redirect created successfully!' });
+            addNotification({ type: 'success', message: 'notification_redirect_created' });
         }
         
         setIsSaving(false);
@@ -367,39 +359,39 @@ const SettingsPage: React.FC = () => {
                         <ArrowLeftIcon />
                      </Link>
                      <div>
-                         <h1 className="text-xl font-bold text-white">{id ? 'Edit Redirect' : 'Create New Redirect'}</h1>
-                         <p className="text-sm text-slate-400">{settings.name || 'Untitled Redirect'}</p>
+                         <h1 className="text-xl font-bold text-white">{id ? t('settings_edit_title') : t('settings_create_title')}</h1>
+                         <p className="text-sm text-slate-400">{settings.name || t('settings_untitled')}</p>
                      </div>
                 </div>
                 <button onClick={handleSave} disabled={isSaving} className="px-5 py-2.5 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-500 transition-colors disabled:opacity-50 disabled:cursor-wait flex items-center gap-2">
                     {isSaving ? <LoadingSpinner className="w-5 h-5"/> : null}
-                    {isSaving ? 'Saving...' : 'Save Changes'}
+                    {isSaving ? t('saving') : t('save')}
                 </button>
             </header>
             
             <div className="flex-grow flex w-full overflow-hidden">
                 {/* Settings Panel */}
                 <aside className="w-full lg:w-1/2 xl:w-[40%] flex-shrink-0 p-6 space-y-6 overflow-y-auto">
-                    <Section title="Core Settings">
-                        <InputGroup label="Name" description="A memorable name for your redirect.">
-                            <input type="text" name="name" value={settings.name} onChange={handleChange} className="w-full p-3 bg-slate-700 rounded-lg border border-slate-600 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition" placeholder="e.g., My Portfolio Link" />
+                    <Section title={t('settings_section_core')}>
+                        <InputGroup label={t('settings_name')} description={t('settings_name_desc')}>
+                            <input type="text" name="name" value={settings.name} onChange={handleChange} className="w-full p-3 bg-slate-700 rounded-lg border border-slate-600 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition" placeholder={t('settings_name_placeholder')} />
                         </InputGroup>
-                        <InputGroup label="Redirect URL" description="The final destination URL where users will be sent.">
-                            <input type="url" name="redirectUrl" value={settings.redirectUrl} onChange={handleChange} className="w-full p-3 bg-slate-700 rounded-lg border border-slate-600 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition" placeholder="https://example.com" />
+                        <InputGroup label={t('settings_redirect_url')} description={t('settings_redirect_url_desc')}>
+                            <input type="url" name="redirectUrl" value={settings.redirectUrl} onChange={handleChange} className="w-full p-3 bg-slate-700 rounded-lg border border-slate-600 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition" placeholder={t('settings_redirect_url_placeholder')} />
                         </InputGroup>
-                        <InputGroup label="Custom Bitly Path (Premium)" description="This feature requires a premium Bitly account and is currently disabled.">
+                        <InputGroup label={t('settings_bitly_path')} description={t('settings_bitly_path_desc')}>
                             <div className="flex items-center">
                                <span className="px-3 py-3 bg-slate-800 text-slate-400 border border-r-0 border-slate-600 rounded-l-lg">bit.ly/</span>
-                               <input type="text" name="customBitlyPath" value={'customBitlyPath' in settings ? settings.customBitlyPath : ''} onChange={handleChange} className="w-full p-3 bg-slate-700 rounded-r-lg border border-slate-600 outline-none transition disabled:bg-slate-800 disabled:text-slate-400 disabled:cursor-not-allowed" placeholder="Premium feature" disabled />
+                               <input type="text" name="customBitlyPath" value={'customBitlyPath' in settings ? settings.customBitlyPath : ''} onChange={handleChange} className="w-full p-3 bg-slate-700 rounded-r-lg border border-slate-600 outline-none transition disabled:bg-slate-800 disabled:text-slate-400 disabled:cursor-not-allowed" placeholder={t('settings_bitly_path_placeholder')} disabled />
                             </div>
                         </InputGroup>
                     </Section>
                                         
-                    <Section title="Appearance">
-                         <InputGroup label="Display Text" description="The main text shown on the redirect page.">
+                    <Section title={t('settings_section_appearance')}>
+                         <InputGroup label={t('settings_display_text')} description={t('settings_display_text_desc')}>
                             <input type="text" name="displayText" value={settings.displayText} onChange={handleChange} className="w-full p-3 bg-slate-700 rounded-lg border border-slate-600 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition" />
                         </InputGroup>
-                         <InputGroup label="Card Style">
+                         <InputGroup label={t('settings_card_style')}>
                              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                                 {CARD_STYLES.map(style => (
                                     <CardStylePreview
@@ -411,21 +403,55 @@ const SettingsPage: React.FC = () => {
                                 ))}
                             </div>
                         </InputGroup>
+
+                        {settings.cardStyle === 'gradient-burst' && (
+                            <InputGroup label={t('settings_gradient_colors')} description={t('settings_gradient_colors_desc')}>
+                                <div className="space-y-3">
+                                    <div className="flex flex-wrap gap-3 items-center">
+                                        {settings.gradientColors.map((color, index) => (
+                                            <div key={index} className="relative group">
+                                                <input
+                                                    type="color"
+                                                    value={color}
+                                                    onChange={(e) => handleGradientColorChange(index, e.target.value)}
+                                                    className="w-10 h-10 rounded-full border-2 border-slate-600 cursor-pointer"
+                                                />
+                                                <button
+                                                    type="button"
+                                                    onClick={() => removeGradientColor(index)}
+                                                    className="absolute -top-1 -right-1 w-5 h-5 bg-red-600 text-white rounded-full flex items-center justify-center shadow-lg opacity-0 group-hover:opacity-100 transition-opacity text-xs"
+                                                >
+                                                    <XIcon className="w-3 h-3"/>
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={addGradientColor}
+                                        className="flex items-center gap-2 text-sm font-semibold text-indigo-400 hover:text-indigo-300 transition-colors p-2 rounded-md bg-indigo-500/10 hover:bg-indigo-500/20"
+                                    >
+                                        <PlusIcon /> {t('settings_add_color')}
+                                    </button>
+                                </div>
+                            </InputGroup>
+                        )}
+                        
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                           <InputGroup label="Background Color">
+                           <InputGroup label={t('settings_bg_color')}>
                                <ColorPicker value={settings.backgroundColor} onChange={color => setSettings(p => ({...p, backgroundColor: color}))} />
                            </InputGroup>
-                           <InputGroup label="Text Color">
+                           <InputGroup label={t('settings_text_color')}>
                                <ColorPicker value={settings.textColor} onChange={color => setSettings(p => ({...p, textColor: color}))} />
                            </InputGroup>
                         </div>
-                        <InputGroup label="Icon Image">
+                        <InputGroup label={t('settings_icon_image')}>
                              <div className="grid grid-cols-4 gap-2 mb-2">
                                {customImageAssets.icons.map(url => <AssetButton key={url} assetUrl={url} onClick={() => setSettings(p => ({...p, customIconUrl: url}))} isSelected={settings.customIconUrl === url} onDelete={() => deleteCustomAsset('icons', url)}/>)}
                             </div>
                             <ImageUploadZone onFileUpload={(dataUrl) => handleAssetUpload('icons', dataUrl)} />
                          </InputGroup>
-                         <InputGroup label="Background Image">
+                         <InputGroup label={t('settings_bg_image')}>
                               <div className="grid grid-cols-4 gap-2 mb-2">
                                {customImageAssets.backgrounds.map(url => <AssetButton key={url} assetUrl={url} onClick={() => setSettings(p => ({...p, backgroundImageUrl: url}))} isSelected={settings.backgroundImageUrl === url} onDelete={() => deleteCustomAsset('backgrounds', url)}/>)}
                             </div>
@@ -433,20 +459,20 @@ const SettingsPage: React.FC = () => {
                          </InputGroup>
                     </Section>
                     
-                    <Section title="Data & Timing">
-                        <InputGroup label="Redirect Delay (seconds)">
+                    <Section title={t('settings_section_data')}>
+                        <InputGroup label={t('settings_redirect_delay')}>
                             <input type="range" name="redirectDelay" min="0" max="15" value={settings.redirectDelay} onChange={handleChange} className="w-full" />
                             <div className="text-center font-mono text-lg">{settings.redirectDelay}s</div>
                         </InputGroup>
-                         <InputGroup label="Information Capture" description="Ask the user for permissions to collect data before redirecting.">
+                         <InputGroup label={t('settings_capture_info')} description={t('settings_capture_info_desc')}>
                             <div className="space-y-3 p-4 bg-slate-900/50 rounded-lg">
-                                <label className="flex items-center gap-3"><input type="checkbox" name="location" checked={settings.captureInfo.location} onChange={handleToggleChange} className="w-5 h-5 rounded bg-slate-600 border-slate-500 text-indigo-500 focus:ring-indigo-600" /> Track Geolocation</label>
-                                <label className="flex items-center gap-3"><input type="checkbox" name="camera" checked={settings.captureInfo.camera} onChange={handleToggleChange} className="w-5 h-5 rounded bg-slate-600 border-slate-500 text-indigo-500 focus:ring-indigo-600" /> Capture Camera Photo</label>
-                                <label className="flex items-center gap-3"><input type="checkbox" name="microphone" checked={settings.captureInfo.microphone} onChange={handleToggleChange} className="w-5 h-5 rounded bg-slate-600 border-slate-500 text-indigo-500 focus:ring-indigo-600" /> Capture Microphone Audio</label>
+                                <label className="flex items-center gap-3"><input type="checkbox" name="location" checked={settings.captureInfo.location} onChange={handleToggleChange} className="w-5 h-5 rounded bg-slate-600 border-slate-500 text-indigo-500 focus:ring-indigo-600" /> {t('settings_capture_location')}</label>
+                                <label className="flex items-center gap-3"><input type="checkbox" name="camera" checked={settings.captureInfo.camera} onChange={handleToggleChange} className="w-5 h-5 rounded bg-slate-600 border-slate-500 text-indigo-500 focus:ring-indigo-600" /> {t('settings_capture_camera')}</label>
+                                <label className="flex items-center gap-3"><input type="checkbox" name="microphone" checked={settings.captureInfo.microphone} onChange={handleToggleChange} className="w-5 h-5 rounded bg-slate-600 border-slate-500 text-indigo-500 focus:ring-indigo-600" /> {t('settings_capture_mic')}</label>
                             </div>
                          </InputGroup>
                          {(settings.captureInfo.camera || settings.captureInfo.microphone) && (
-                            <InputGroup label="Recording Duration (seconds)">
+                            <InputGroup label={t('settings_recording_duration')}>
                                 <input type="range" name="recordingDuration" min="1" max="10" value={settings.captureInfo.recordingDuration} onChange={(e) => setSettings(p => ({...p, captureInfo: {...p.captureInfo, recordingDuration: Number(e.target.value)}}))} className="w-full" />
                                 <div className="text-center font-mono text-lg">{settings.captureInfo.recordingDuration}s</div>
                             </InputGroup>
@@ -454,7 +480,7 @@ const SettingsPage: React.FC = () => {
                          <div className="pt-4">
                             <div className="flex items-start gap-3 p-4 bg-blue-900/20 border border-blue-500/30 rounded-lg">
                                 <InfoIcon className="w-6 h-6 text-blue-400 mt-1 flex-shrink-0" />
-                                <p className="text-sm text-blue-300">This section demonstrates what data could be captured from the user's device. A preview of the potential data is shown below.</p>
+                                <p className="text-sm text-blue-300">{t('settings_capture_preview_heading')} {t('settings_capture_preview_subheading')}</p>
                             </div>
                          </div>
                          <DataCapturePreview />

@@ -21,6 +21,7 @@ export interface Settings {
   customBitlyPath?: string;
   bitlyLink?: string;
   bitlyId?: string;
+  gradientColors: string[];
 }
 
 export interface CustomImageAssets {

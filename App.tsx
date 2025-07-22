@@ -1,8 +1,7 @@
-
-
 import * as React from 'react';
 import { HashRouter, Routes, Route } from 'react-router-dom';
 import { SettingsProvider, NotificationProvider, useNotifications, useSettings } from './contexts/SettingsContext';
+import { LanguageProvider, useLanguage } from './contexts/LanguageContext';
 import RedirectPage from './components/RedirectPage';
 import SettingsPage from './components/SettingsPage';
 import HomePage from './components/HomePage';
@@ -27,11 +26,15 @@ const BG_COLORS: Record<NotificationType, string> = {
 const SingleNotification: React.FC<{ notification: Notification }> = ({ notification }) => {
   const Icon = ICONS[notification.type];
   const colorClasses = BG_COLORS[notification.type];
+  const { t } = useLanguage();
+
+  // The message can now be a key for translation
+  const message = t(notification.message);
 
   return (
     <div className={`flex items-center gap-4 w-full p-4 rounded-xl shadow-2xl text-white font-semibold border animate-fade-in-up ${colorClasses}`}>
       <Icon className="w-6 h-6 flex-shrink-0" />
-      <p className="flex-grow">{notification.message}</p>
+      <p className="flex-grow">{message}</p>
     </div>
   );
 };
@@ -47,15 +50,18 @@ const NotificationContainer: React.FC = () => {
     );
 }
 
-const LoadingScreen: React.FC = () => (
-    <div className="w-screen h-screen bg-slate-900 flex flex-col items-center justify-center gap-4">
-        <svg className="animate-spin h-10 w-10 text-indigo-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-        </svg>
-        <p className="text-slate-400 font-semibold">Loading Data...</p>
-    </div>
-);
+const LoadingScreen: React.FC = () => {
+    const { t } = useLanguage();
+    return (
+        <div className="w-screen h-screen bg-slate-900 flex flex-col items-center justify-center gap-4">
+            <svg className="animate-spin h-10 w-10 text-indigo-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <p className="text-slate-400 font-semibold">{t('loading')}</p>
+        </div>
+    );
+};
 
 
 const AppContent: React.FC = () => {
@@ -82,11 +88,13 @@ const AppContent: React.FC = () => {
 
 function App() {
   return (
-    <NotificationProvider>
-        <SettingsProvider>
-            <AppContent />
-        </SettingsProvider>
-    </NotificationProvider>
+    <LanguageProvider>
+        <NotificationProvider>
+            <SettingsProvider>
+                <AppContent />
+            </SettingsProvider>
+        </NotificationProvider>
+    </LanguageProvider>
   );
 }
 

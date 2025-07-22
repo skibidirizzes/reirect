@@ -27,6 +27,7 @@ export const NEW_REDIRECT_TEMPLATE: Omit<Settings, 'id' | 'name'> = {
   customBitlyPath: '',
   bitlyLink: '',
   bitlyId: '',
+  gradientColors: ['#8B5CF6', '#EC4899', '#F59E0B'],
 };
 
 export const PREDEFINED_COLORS = [

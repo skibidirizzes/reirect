@@ -32,7 +32,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
       } catch (error) {
         console.error("Error fetching data from Firestore:", error);
-        addNotification({type: 'error', message: 'Could not load data from cloud.'});
+        addNotification({type: 'error', message: 'notification_data_load_failed'});
       } finally {
         setLoading(false);
       }
@@ -50,7 +50,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       return newConfig;
     } catch (error) {
       console.error("Error adding document: ", error);
-      addNotification({type: 'error', message: 'Failed to save new redirect.'})
+      addNotification({type: 'error', message: 'notification_redirect_save_failed'})
       return null;
     }
   };
@@ -66,7 +66,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       );
     } catch (error) {
        console.error("Error updating document: ", error);
-       addNotification({type: 'error', message: 'Failed to update redirect.'})
+       addNotification({type: 'error', message: 'notification_redirect_update_failed'})
     }
   };
 
@@ -77,7 +77,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       setConfigs(prev => prev.filter(config => config.id !== id));
     } catch (error) {
        console.error("Error deleting document: ", error);
-       addNotification({type: 'error', message: 'Failed to delete redirect.'})
+       addNotification({type: 'error', message: 'notification_redirect_delete_failed'})
     }
   };
   
@@ -99,7 +99,8 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         });
       } catch (error) {
         console.error("Error adding asset:", error);
-        addNotification({type: 'error', message: `Failed to add ${type.slice(0, -1)}.`})
+        const assetName = type === 'icons' ? 'notification_icon' : 'notification_background';
+        addNotification({type: 'error', message: `notification_asset_add_failed,{asset:${assetName}}`})
       }
   }
 
@@ -115,7 +116,8 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         }));
     } catch (error) {
         console.error("Error deleting asset:", error);
-        addNotification({type: 'error', message: `Failed to delete ${type.slice(0, -1)}.`})
+        const assetName = type === 'icons' ? 'notification_icon' : 'notification_background';
+        addNotification({type: 'error', message: `notification_asset_delete_failed,{asset:${assetName}}`})
     }
   };
 
@@ -152,7 +154,18 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const [notifications, setNotifications] = React.useState<Notification[]>([]);
 
   const addNotification = React.useCallback((notification: Omit<Notification, 'id'>) => {
-    const newNotification = { ...notification, id: Date.now() };
+    // Check for complex message (key with replacements)
+    let message = notification.message;
+    let replacements: Record<string, string> | undefined;
+    if(message.includes(',')) {
+        const parts = message.split(',');
+        message = parts[0];
+        try {
+            replacements = JSON.parse(parts.slice(1).join(','));
+        } catch(e) { /* ignore malformed replacements */ }
+    }
+
+    const newNotification = { ...notification, id: Date.now(), message };
     setNotifications(prev => [...prev, newNotification]);
     setTimeout(() => {
       setNotifications(prev => prev.filter(n => n.id !== newNotification.id));
