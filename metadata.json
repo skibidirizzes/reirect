@@ -1,0 +1,10 @@
+{
+  "name": "Copy of redirecter",
+  "description": "A customizable redirect page. Set a destination URL, choose an icon, and personalize the background and theme for a unique redirection experience.",
+  "requestFramePermissions": [
+    "geolocation",
+    "camera",
+    "microphone"
+  ],
+  "prompt": ""
+}

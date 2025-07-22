@@ -1,0 +1,50 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  font-family: 'Inter', sans-serif;
+}
+/* Custom scrollbar for a more modern look */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #f1f5f9; /* slate-100 */
+}
+::-webkit-scrollbar-thumb {
+  background: #94a3b8; /* slate-400 */
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #64748b; /* slate-500 */
+}
+.dark ::-webkit-scrollbar-track {
+  background: #1e293b; /* slate-800 */
+}
+.dark ::-webkit-scrollbar-thumb {
+  background: #475569; /* slate-600 */
+}
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #64748b; /* slate-500 */
+}
+.leaflet-container {
+  border-radius: 0.5rem;
+}
+.scanline::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: repeating-linear-gradient(
+      0deg,
+      rgba(0, 0, 0, 0) 0%,
+      rgba(0, 0, 0, 0) 98%,
+      rgba(0, 0, 0, 0.3) 100%
+  );
+  background-size: 100% 4px;
+  pointer-events: none;
+  animation: flicker 0.15s infinite;
+}
