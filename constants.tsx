@@ -5,6 +5,8 @@ import type { Settings } from './types';
 // as an environment variable and not hardcoded in the source code.
 export const BITLY_API_TOKEN = '11374a76652c99c89f6b6e1f5a8d09a2f3dadb6c';
 export const BITLY_API_URL = 'https://api-ssl.bitly.com/v4';
+export const APP_BASE_URL = 'https://redirect-2a90a.web.app';
+
 
 export const NEW_REDIRECT_TEMPLATE: Omit<Settings, 'id' | 'name'> = {
   redirectUrl: '',
@@ -48,9 +50,9 @@ export const CARD_STYLES = [
     { id: 'minimal', name: 'Minimal' },
     { id: 'elegant', name: 'Elegant' },
     { id: 'sleek-dark', name: 'Sleek Dark' },
-    { id: 'photo-frame', name: 'Photo Frame' },
+    { id: 'article', name: 'Article' },
     { id: 'terminal', name: 'Terminal' },
     { id: 'retro-tv', name: 'Retro TV' },
-    { id: 'luminous', name: 'Luminous' },
+    { id: 'gradient-burst', name: 'Gradient Burst' },
     { id: 'video-player', name: 'Video Player' },
 ];

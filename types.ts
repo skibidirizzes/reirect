@@ -30,7 +30,8 @@ export interface CustomImageAssets {
 
 export interface SettingsContextType {
   configs: Settings[];
-  addConfig: (configData: Omit<Settings, 'id'>) => Settings;
+  loading: boolean;
+  addConfig: (configData: Omit<Settings, 'id'>) => Promise<Settings | null>;
   updateConfig: (id: string, updates: Partial<Omit<Settings, 'id'>>) => void;
   deleteConfig: (id: string) => void;
   getConfig: (id: string) => Settings | undefined;

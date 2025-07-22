@@ -1,7 +1,8 @@
 
+
 import * as React from 'react';
 import { HashRouter, Routes, Route } from 'react-router-dom';
-import { SettingsProvider, NotificationProvider, useNotifications } from './contexts/SettingsContext';
+import { SettingsProvider, NotificationProvider, useNotifications, useSettings } from './contexts/SettingsContext';
 import RedirectPage from './components/RedirectPage';
 import SettingsPage from './components/SettingsPage';
 import HomePage from './components/HomePage';
@@ -46,24 +47,46 @@ const NotificationContainer: React.FC = () => {
     );
 }
 
+const LoadingScreen: React.FC = () => (
+    <div className="w-screen h-screen bg-slate-900 flex flex-col items-center justify-center gap-4">
+        <svg className="animate-spin h-10 w-10 text-indigo-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        <p className="text-slate-400 font-semibold">Loading Data...</p>
+    </div>
+);
+
+
+const AppContent: React.FC = () => {
+    const { loading } = useSettings();
+
+    if (loading) {
+        return <LoadingScreen />;
+    }
+
+    return (
+      <HashRouter>
+        <div className="w-screen h-screen bg-slate-900 text-slate-300">
+          <Routes>
+            <Route path="/view/:data" element={<RedirectPage />} />
+            <Route path="/edit/:id" element={<SettingsPage />} />
+            <Route path="/new" element={<SettingsPage />} />
+            <Route path="/" element={<HomePage />} />
+          </Routes>
+          <NotificationContainer />
+        </div>
+      </HashRouter>
+    );
+};
 
 function App() {
   return (
-    <SettingsProvider>
-      <NotificationProvider>
-        <HashRouter>
-          <div className="w-screen h-screen bg-slate-900 text-slate-300">
-            <Routes>
-              <Route path="/view/:data" element={<RedirectPage />} />
-              <Route path="/edit/:id" element={<SettingsPage />} />
-              <Route path="/new" element={<SettingsPage />} />
-              <Route path="/" element={<HomePage />} />
-            </Routes>
-            <NotificationContainer />
-          </div>
-        </HashRouter>
-      </NotificationProvider>
-    </SettingsProvider>
+    <NotificationProvider>
+        <SettingsProvider>
+            <AppContent />
+        </SettingsProvider>
+    </NotificationProvider>
   );
 }
 

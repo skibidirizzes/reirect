@@ -123,19 +123,41 @@ const SleekDarkCard: React.FC<{ settings: Settings, isPaused: boolean }> = ({ se
   </div>
 );
 
-const PhotoFrameCard: React.FC<{ settings: Settings, isPaused: boolean }> = ({ settings, isPaused }) => (
-    <div className="relative w-full max-w-sm animate-scale-in p-4 pb-12 bg-white shadow-2xl rounded-md transform rotate-1" style={{ color: settings.textColor }}>
-        <div className="bg-slate-800 aspect-square w-full flex items-center justify-center">
-            {settings.customIconUrl ?
-                <img src={settings.customIconUrl} alt="Icon" className="w-full h-full object-cover"/> :
-                <div className="text-slate-500 p-4 text-center">Your photo appears here</div>
-            }
+const ArticleCard: React.FC<{ settings: Settings, isPaused: boolean }> = ({ settings, isPaused }) => (
+    <div className="w-full max-w-2xl animate-fade-in-up" style={{ color: settings.textColor }}>
+        <div className="bg-white p-12 rounded-lg shadow-2xl">
+            {settings.customIconUrl && (
+                <div className="mb-6 h-48 w-full overflow-hidden rounded-md bg-slate-200">
+                    <img src={settings.customIconUrl} alt="Article hero" className="w-full h-full object-cover"/>
+                </div>
+            )}
+            <p className="text-sm font-semibold uppercase tracking-widest text-indigo-600 mb-2">REDIRECTING</p>
+            <h1 className="text-4xl lg:text-5xl font-bold font-serif text-slate-900 mb-6">{settings.displayText}</h1>
+            <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-slate-200 rounded-full"></div>
+                <div>
+                    <p className="font-semibold text-slate-800">Link Director</p>
+                    <p className="text-slate-500 text-sm">Please wait while we connect you...</p>
+                </div>
+            </div>
+             <div className="w-full pt-8">
+                <Progress duration={settings.redirectDelay} isPaused={isPaused} className="w-full h-1 bg-slate-200" progressClassName="bg-indigo-500 h-full" />
+            </div>
         </div>
-        <div className="mt-4 text-center">
-            <h1 className="text-2xl font-medium text-slate-800 font-serif">{settings.displayText}</h1>
-        </div>
-        <div className="w-full absolute bottom-4 left-0 px-4">
-             <Progress duration={settings.redirectDelay} isPaused={isPaused} className="w-full h-0.5 bg-slate-200" progressClassName="bg-slate-500 h-full" />
+    </div>
+);
+
+const GradientBurstCard: React.FC<{ settings: Settings, isPaused: boolean }> = ({ settings, isPaused }) => (
+    <div className="w-full max-w-lg animate-scale-in" style={{ color: settings.textColor }}>
+        <div className="bg-gradient-to-br from-purple-600 via-pink-500 to-red-500 p-1 rounded-2xl shadow-2xl">
+            <div className="bg-slate-900/80 backdrop-blur-lg rounded-xl p-12 text-center flex flex-col items-center gap-6">
+                 {settings.customIconUrl && <img src={settings.customIconUrl} alt="Icon" className="w-28 h-28 mb-4 object-contain rounded-full shadow-lg border-4 border-white/20" />}
+                <h1 className="text-5xl font-extrabold leading-tight text-white" style={{textShadow: '0 2px 10px rgba(0,0,0,0.3)'}}>{settings.displayText}</h1>
+                <p className="text-white/80 mt-1">Connecting you in a moment...</p>
+                <div className="w-full pt-6">
+                    <Progress duration={settings.redirectDelay} isPaused={isPaused} className="w-full bg-white/20 rounded-full h-2.5 overflow-hidden" progressClassName="bg-white h-full rounded-full" />
+                </div>
+            </div>
         </div>
     </div>
 );
@@ -167,16 +189,6 @@ const RetroTVCard: React.FC<{ settings: Settings, isPaused: boolean }> = ({ sett
                     <Progress duration={settings.redirectDelay} isPaused={isPaused} className="w-full h-2 bg-green-900/50" progressClassName="bg-green-500 h-full" />
                 </div>
             </div>
-        </div>
-    </div>
-);
-
-const LuminousCard: React.FC<{ settings: Settings, isPaused: boolean }> = ({ settings, isPaused }) => (
-    <div className="w-full max-w-md animate-fade-in text-center flex flex-col items-center gap-6" style={{ color: settings.textColor }}>
-        {settings.customIconUrl && <img src={settings.customIconUrl} alt="Icon" className="w-32 h-32 object-contain" style={{ filter: `drop-shadow(0 0 15px ${settings.textColor})` }}/>}
-        <h1 className="text-5xl font-bold animate-glow" style={{ textShadow: `0 0 10px ${settings.textColor}, 0 0 20px ${settings.textColor}` }}>{settings.displayText}</h1>
-        <div className="w-full pt-4">
-           <Progress duration={settings.redirectDelay} isPaused={isPaused} className="w-full h-1.5 rounded-full" progressClassName="h-full rounded-full" style={{ backgroundColor: `${settings.textColor}50`}} progressStyle={{ backgroundColor: settings.textColor, boxShadow: `0 0 10px ${settings.textColor}` }} />
         </div>
     </div>
 );
@@ -368,10 +380,10 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview:
         case 'minimal': return <MinimalCard {...props} />;
         case 'elegant': return <ElegantCard {...props} />;
         case 'sleek-dark': return <SleekDarkCard {...props} />;
-        case 'photo-frame': return <PhotoFrameCard {...props} />;
+        case 'article': return <ArticleCard {...props} />;
         case 'terminal': return <TerminalCard {...props} />;
         case 'retro-tv': return <RetroTVCard {...props} />;
-        case 'luminous': return <LuminousCard {...props} />;
+        case 'gradient-burst': return <GradientBurstCard {...props} />;
         case 'video-player': return <VideoPlayerCard {...props} />;
         default: return <DefaultWhiteCard {...props} />;
     }

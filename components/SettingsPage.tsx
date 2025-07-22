@@ -3,7 +3,7 @@ import { Link, useParams, useNavigate } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
 import type { Settings, CustomImageAssets } from '../types';
 import { useSettings, useNotification } from '../contexts/SettingsContext';
-import { NEW_REDIRECT_TEMPLATE, BITLY_API_TOKEN, BITLY_API_URL, CARD_STYLES } from '../constants';
+import { NEW_REDIRECT_TEMPLATE, BITLY_API_TOKEN, BITLY_API_URL, CARD_STYLES, APP_BASE_URL } from '../constants';
 import RedirectPage from './RedirectPage';
 
 // --- Re-usable UI Components ---
@@ -128,7 +128,7 @@ const ImageUploadZone: React.FC<{ onFileUpload: (dataUrl: string) => void }> = (
 };
 
 const CardStylePreview: React.FC<{ style: {id: string, name: string}, isSelected: boolean, onClick: () => void }> = ({ style, isSelected, onClick }) => {
-    const commonClasses = "w-full h-24 rounded-lg flex items-center justify-center p-2 text-center font-semibold border-2 cursor-pointer transition-all duration-200";
+    const commonClasses = "w-full h-24 rounded-lg flex items-center justify-center p-2 text-center font-semibold border-2 cursor-pointer transition-all duration-200 text-xs sm:text-sm";
     const selectedClasses = "border-indigo-500 scale-105 shadow-lg";
     const unselectedClasses = "border-slate-700 hover:border-slate-500";
     
@@ -138,10 +138,10 @@ const CardStylePreview: React.FC<{ style: {id: string, name: string}, isSelected
             case 'minimal': return 'bg-transparent text-white';
             case 'elegant': return 'bg-white text-black border-2 border-black/80 font-serif';
             case 'sleek-dark': return 'bg-slate-900 text-white';
-            case 'photo-frame': return 'bg-white text-slate-800 p-1';
+            case 'article': return 'bg-white text-slate-800 font-serif';
             case 'terminal': return 'bg-[#0D1117] text-green-400 font-mono';
             case 'retro-tv': return 'bg-slate-900 text-green-400 font-mono';
-            case 'luminous': return 'bg-black text-cyan-300';
+            case 'gradient-burst': return 'bg-gradient-to-br from-purple-600 to-red-500 text-white';
             case 'video-player': return 'bg-black text-white';
             default: return 'bg-white text-blue-600';
         }
@@ -149,7 +149,7 @@ const CardStylePreview: React.FC<{ style: {id: string, name: string}, isSelected
     
     return (
         <button type="button" onClick={onClick} className={`${commonClasses} ${getStyleClasses()} ${isSelected ? selectedClasses : unselectedClasses}`}>
-            {style.id === 'photo-frame' ? <div className="p-2 border border-slate-200">{style.name}</div> : <p>{style.name}</p>}
+            <p>{style.name}</p>
         </button>
     );
 };
@@ -288,8 +288,7 @@ const SettingsPage: React.FC = () => {
             captureInfo: settingsData.captureInfo,
         };
         const base64Data = btoa(JSON.stringify(payload));
-        const baseUrl = window.location.origin + window.location.pathname.replace(/\/$/, '');
-        return `${baseUrl}#/view/${base64Data}`;
+        return `${APP_BASE_URL}/#/view/${base64Data}`;
     };
 
     const createOrUpdateBitlyLink = async (): Promise<{bitlyLink?: string, bitlyId?: string}> => {
@@ -340,13 +339,18 @@ const SettingsPage: React.FC = () => {
             linkData = await createOrUpdateBitlyLink();
         }
         
-        const finalSettings = {...settings, ...linkData};
+        let finalSettings: Omit<Settings, 'id'> = {...settings, ...linkData};
+        // remove id property if it exists, as it's not part of the data model in firestore document fields
+        if ('id' in finalSettings) {
+            const { id: _, ...remaningSettings } = finalSettings as Settings;
+            finalSettings = remaningSettings;
+        }
         
         if (id) {
-            updateConfig(id, finalSettings);
+            await updateConfig(id, finalSettings);
             addNotification({ type: 'success', message: 'Redirect updated successfully!' });
         } else {
-            addConfig(finalSettings);
+            await addConfig(finalSettings);
             addNotification({ type: 'success', message: 'Redirect created successfully!' });
         }
         
