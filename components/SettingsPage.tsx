@@ -1,6 +1,5 @@
 import * as React from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
-import { GoogleGenAI, Type } from "@google/genai";
 import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
 import type { Settings, CustomImageAssets } from '../types';
 import { useSettings, useNotification } from '../contexts/SettingsContext';
@@ -12,10 +11,8 @@ import RedirectPage from './RedirectPage';
 const ArrowLeftIcon: React.FC<{className?: string}> = ({className}) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>);
 const LoadingSpinner: React.FC<{className?: string}> = ({className}) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`animate-spin ${className}`}><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>);
 const InfoIcon: React.FC<{className?: string}> = ({className}) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10" /><line x1="12" y1="16" x2="12" y2="12" /><line x1="12" y1="8" x2="12.01" y2="8" /></svg>);
-const ImagePlusIcon: React.FC<{className?: string}> = ({className}) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7"/><line x1="16" y1="5" x2="22" y2="5"/><line x1="19" y1="2" x2="19" y2="8"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>);
+const UploadCloudIcon: React.FC<{className?: string}> = ({className}) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/><path d="M12 12v9"/><path d="m16 16-4-4-4 4"/></svg>);
 const XIcon: React.FC<{className?: string}> = ({className}) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>);
-const SparklesIcon: React.FC<{className?: string}> = ({className}) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m12 3-1.5 3L7 7.5l3 1.5L12 12l1.5-3L17 7.5l-3-1.5z"/><path d="M5 21v-4"/><path d="M19 21v-4"/><path d="m5 10-2-2"/><path d="m19 10 2-2"/><path d="m2 17 2-2"/><path d="M22 17l-2-2"/></svg>);
-
 
 const InputGroup: React.FC<{ label: string, description?: string, children: React.ReactNode }> = ({ label, description, children }) => (
     <div className="space-y-2">
@@ -78,6 +75,85 @@ const Section: React.FC<{ title: string, children: React.ReactNode, action?: Rea
         {children}
     </div>
 );
+
+const ImageUploadZone: React.FC<{ onFileUpload: (dataUrl: string) => void }> = ({ onFileUpload }) => {
+    const [isDragging, setIsDragging] = React.useState(false);
+    const inputRef = React.useRef<HTMLInputElement>(null);
+
+    const handleFile = (file: File) => {
+        if (file && file.type.startsWith('image/')) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                onFileUpload(e.target?.result as string);
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
+    const handleDragOver = (e: React.DragEvent) => { e.preventDefault(); setIsDragging(true); };
+    const handleDragLeave = (e: React.DragEvent) => { e.preventDefault(); setIsDragging(false); };
+
+    const handleDrop = (e: React.DragEvent) => {
+        e.preventDefault();
+        setIsDragging(false);
+        if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+            handleFile(e.dataTransfer.files[0]);
+        }
+    };
+
+    const handleClick = () => inputRef.current?.click();
+    
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if(e.target.files && e.target.files[0]) {
+            handleFile(e.target.files[0]);
+        }
+    };
+
+    return (
+        <div
+            onClick={handleClick}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+            className={`flex flex-col items-center justify-center p-6 border-2 border-dashed rounded-lg cursor-pointer transition-colors duration-200 ${isDragging ? 'border-indigo-500 bg-slate-700' : 'border-slate-600 hover:border-slate-500 hover:bg-slate-700/50'}`}
+        >
+            <input type="file" ref={inputRef} onChange={handleInputChange} accept="image/*" className="hidden" />
+            <div className="text-center">
+                <UploadCloudIcon className="w-10 h-10 text-slate-400 mx-auto mb-2" />
+                <p className="text-slate-300 font-semibold">Drag & drop or click to upload</p>
+                <p className="text-xs text-slate-400">PNG, JPG, GIF, WEBP</p>
+            </div>
+        </div>
+    );
+};
+
+const CardStylePreview: React.FC<{ style: {id: string, name: string}, isSelected: boolean, onClick: () => void }> = ({ style, isSelected, onClick }) => {
+    const commonClasses = "w-full h-24 rounded-lg flex items-center justify-center p-2 text-center font-semibold border-2 cursor-pointer transition-all duration-200";
+    const selectedClasses = "border-indigo-500 scale-105 shadow-lg";
+    const unselectedClasses = "border-slate-700 hover:border-slate-500";
+    
+    const getStyleClasses = () => {
+        switch(style.id) {
+            case 'glass': return 'bg-white/10 backdrop-blur-md text-white';
+            case 'minimal': return 'bg-transparent text-white';
+            case 'elegant': return 'bg-white text-black border-2 border-black/80 font-serif';
+            case 'sleek-dark': return 'bg-slate-900 text-white';
+            case 'photo-frame': return 'bg-white text-slate-800 p-1';
+            case 'terminal': return 'bg-[#0D1117] text-green-400 font-mono';
+            case 'retro-tv': return 'bg-slate-900 text-green-400 font-mono';
+            case 'luminous': return 'bg-black text-cyan-300';
+            case 'video-player': return 'bg-black text-white';
+            default: return 'bg-white text-blue-600';
+        }
+    }
+    
+    return (
+        <button type="button" onClick={onClick} className={`${commonClasses} ${getStyleClasses()} ${isSelected ? selectedClasses : unselectedClasses}`}>
+            {style.id === 'photo-frame' ? <div className="p-2 border border-slate-200">{style.name}</div> : <p>{style.name}</p>}
+        </button>
+    );
+};
+
 
 // --- Data Capture and Map Components ---
 
@@ -172,9 +248,6 @@ const SettingsPage: React.FC = () => {
     });
     
     const [isSaving, setIsSaving] = React.useState(false);
-    const [isGenerating, setIsGenerating] = React.useState(false);
-    const [aiPrompt, setAiPrompt] = React.useState('');
-    const [newAssetUrl, setNewAssetUrl] = React.useState({ icons: '', backgrounds: '' });
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { name, value, type } = e.target;
@@ -193,19 +266,37 @@ const SettingsPage: React.FC = () => {
         }));
     };
 
-    const handleAddNewAsset = (type: keyof CustomImageAssets) => {
-        const url = newAssetUrl[type].trim();
-        if (url) {
-            addCustomAsset(type, url);
-            setNewAssetUrl(prev => ({ ...prev, [type]: ''}));
+    const handleAssetUpload = (type: keyof CustomImageAssets, dataUrl: string) => {
+        addCustomAsset(type, dataUrl);
+        if (type === 'icons') {
+            setSettings(p => ({ ...p, customIconUrl: dataUrl }));
+        } else if (type === 'backgrounds') {
+            setSettings(p => ({ ...p, backgroundImageUrl: dataUrl }));
         }
     };
     
+    const generateShareableUrl = (settingsData: Omit<Settings, 'id'>) => {
+        const payload: Partial<Settings> = {
+            redirectUrl: settingsData.redirectUrl,
+            displayText: settingsData.displayText,
+            customIconUrl: settingsData.customIconUrl,
+            backgroundColor: settingsData.backgroundColor,
+            backgroundImageUrl: settingsData.backgroundImageUrl,
+            textColor: settingsData.textColor,
+            cardStyle: settingsData.cardStyle,
+            redirectDelay: settingsData.redirectDelay,
+            captureInfo: settingsData.captureInfo,
+        };
+        const base64Data = btoa(JSON.stringify(payload));
+        const baseUrl = window.location.origin + window.location.pathname.replace(/\/$/, '');
+        return `${baseUrl}#/view/${base64Data}`;
+    };
+
     const createOrUpdateBitlyLink = async (): Promise<{bitlyLink?: string, bitlyId?: string}> => {
         if (!settings.redirectUrl) return {};
         
-        const longUrl = settings.redirectUrl.startsWith('http') ? settings.redirectUrl : `https://${settings.redirectUrl}`;
-        const body: {long_url: string} = { long_url: longUrl };
+        const longUrl = generateShareableUrl(settings);
+        const body: {long_url: string, custom_bitlinks?: string[]} = { long_url: longUrl };
 
         try {
             const response = await fetch(`${BITLY_API_URL}/bitlinks`, {
@@ -236,12 +327,16 @@ const SettingsPage: React.FC = () => {
         }
         setIsSaving(true);
         
-        let linkData: {bitlyLink?: string, bitlyId?: string} = { bitlyLink: settings.bitlyLink, bitlyId: settings.bitlyId };
+        let linkData: {bitlyLink?: string, bitlyId?: string} = { 
+            bitlyLink: 'bitlyLink' in settings ? settings.bitlyLink : undefined, 
+            bitlyId: 'bitlyId' in settings ? settings.bitlyId : undefined 
+        };
         
         const existingConfig = id ? getConfig(id) : undefined;
-        const urlChanged = existingConfig?.redirectUrl !== settings.redirectUrl;
+        // Re-generate Bitly link if the settings relevant to the redirect page change, not just the URL.
+        const relevantSettingsChanged = !existingConfig || JSON.stringify(generateShareableUrl(existingConfig)) !== JSON.stringify(generateShareableUrl(settings));
 
-        if (!settings.bitlyLink || urlChanged) {
+        if (!linkData.bitlyLink || relevantSettingsChanged) {
             linkData = await createOrUpdateBitlyLink();
         }
         
@@ -258,49 +353,6 @@ const SettingsPage: React.FC = () => {
         setIsSaving(false);
         navigate('/');
     };
-
-    const handleGenerateWithAI = async () => {
-        if (!aiPrompt) {
-            addNotification({ type: 'info', message: 'Please enter a description for the AI.' });
-            return;
-        }
-        setIsGenerating(true);
-        try {
-            const ai = new GoogleGenAI({apiKey: process.env.API_KEY});
-            const response = await ai.models.generateContent({
-                model: 'gemini-2.5-flash',
-                contents: `Based on the following description, generate a design for a redirect page. Description: "${aiPrompt}". Provide a theme name, a suitable card style, text color, and background color.`,
-                config: {
-                    responseMimeType: "application/json",
-                    responseSchema: {
-                        type: Type.OBJECT,
-                        properties: {
-                            displayText: { type: Type.STRING, description: "A short, engaging display text for the user."},
-                            textColor: { type: Type.STRING, description: "A hex color code for the main text." },
-                            backgroundColor: { type: Type.STRING, description: "A hex color code for the background." },
-                            cardStyle: { type: Type.STRING, description: `One of the following values: ${CARD_STYLES.map(s => s.id).join(', ')}`},
-                        },
-                        required: ["displayText", "textColor", "backgroundColor", "cardStyle"]
-                    }
-                }
-            });
-
-            const jsonString = response.text;
-            if (!jsonString) {
-                throw new Error("AI returned an empty response.");
-            }
-            const generated = JSON.parse(jsonString);
-            
-            setSettings(prev => ({ ...prev, ...generated }));
-            addNotification({ type: 'success', message: 'AI design applied!' });
-
-        } catch (error) {
-            console.error('AI Generation Error:', error);
-            addNotification({ type: 'error', message: 'Failed to generate design with AI.' });
-        } finally {
-            setIsGenerating(false);
-        }
-    };
     
     return (
         <div className="w-full h-full flex flex-col dark overflow-hidden">
@@ -315,7 +367,7 @@ const SettingsPage: React.FC = () => {
                          <p className="text-sm text-slate-400">{settings.name || 'Untitled Redirect'}</p>
                      </div>
                 </div>
-                <button onClick={handleSave} disabled={isSaving || isGenerating} className="px-5 py-2.5 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-500 transition-colors disabled:opacity-50 disabled:cursor-wait flex items-center gap-2">
+                <button onClick={handleSave} disabled={isSaving} className="px-5 py-2.5 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-500 transition-colors disabled:opacity-50 disabled:cursor-wait flex items-center gap-2">
                     {isSaving ? <LoadingSpinner className="w-5 h-5"/> : null}
                     {isSaving ? 'Saving...' : 'Save Changes'}
                 </button>
@@ -334,35 +386,26 @@ const SettingsPage: React.FC = () => {
                         <InputGroup label="Custom Bitly Path (Premium)" description="This feature requires a premium Bitly account and is currently disabled.">
                             <div className="flex items-center">
                                <span className="px-3 py-3 bg-slate-800 text-slate-400 border border-r-0 border-slate-600 rounded-l-lg">bit.ly/</span>
-                               <input type="text" name="customBitlyPath" value={settings.customBitlyPath ?? ''} onChange={handleChange} className="w-full p-3 bg-slate-700 rounded-r-lg border border-slate-600 outline-none transition disabled:bg-slate-800 disabled:text-slate-400 disabled:cursor-not-allowed" placeholder="Premium feature" disabled />
+                               <input type="text" name="customBitlyPath" value={'customBitlyPath' in settings ? settings.customBitlyPath : ''} onChange={handleChange} className="w-full p-3 bg-slate-700 rounded-r-lg border border-slate-600 outline-none transition disabled:bg-slate-800 disabled:text-slate-400 disabled:cursor-not-allowed" placeholder="Premium feature" disabled />
                             </div>
                         </InputGroup>
                     </Section>
-                    
-                     <Section title="AI Design Assistant">
-                        <InputGroup label="Describe your desired style" description="Let AI help you design. Try 'a retro 80s computer theme' or 'a clean, professional look for a tech startup'.">
-                            <textarea
-                                value={aiPrompt}
-                                onChange={(e) => setAiPrompt(e.target.value)}
-                                className="w-full p-3 bg-slate-700 rounded-lg border border-slate-600 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition"
-                                placeholder="e.g., A futuristic neon theme for a gaming site"
-                                rows={3}
-                            />
-                        </InputGroup>
-                        <button onClick={handleGenerateWithAI} disabled={isGenerating || isSaving} className="w-full flex items-center justify-center gap-2 px-5 py-3 bg-indigo-500 text-white font-semibold rounded-lg hover:bg-indigo-400 transition-colors disabled:opacity-50">
-                            {isGenerating ? <LoadingSpinner className="w-5 h-5"/> : <SparklesIcon className="w-5 h-5"/>}
-                            {isGenerating ? 'Generating...' : 'Generate with AI'}
-                        </button>
-                    </Section>
-                    
+                                        
                     <Section title="Appearance">
                          <InputGroup label="Display Text" description="The main text shown on the redirect page.">
                             <input type="text" name="displayText" value={settings.displayText} onChange={handleChange} className="w-full p-3 bg-slate-700 rounded-lg border border-slate-600 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition" />
                         </InputGroup>
                          <InputGroup label="Card Style">
-                            <select name="cardStyle" value={settings.cardStyle} onChange={handleChange} className="w-full p-3 bg-slate-700 rounded-lg border border-slate-600 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition">
-                                {CARD_STYLES.map(style => <option key={style.id} value={style.id}>{style.name}</option>)}
-                            </select>
+                             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                {CARD_STYLES.map(style => (
+                                    <CardStylePreview
+                                        key={style.id}
+                                        style={style}
+                                        isSelected={settings.cardStyle === style.id}
+                                        onClick={() => setSettings(p => ({ ...p, cardStyle: style.id }))}
+                                    />
+                                ))}
+                            </div>
                         </InputGroup>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                            <InputGroup label="Background Color">
@@ -372,23 +415,17 @@ const SettingsPage: React.FC = () => {
                                <ColorPicker value={settings.textColor} onChange={color => setSettings(p => ({...p, textColor: color}))} />
                            </InputGroup>
                         </div>
-                        <InputGroup label="Icon Image URL">
-                            <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 mb-2">
+                        <InputGroup label="Icon Image">
+                             <div className="grid grid-cols-4 gap-2 mb-2">
                                {customImageAssets.icons.map(url => <AssetButton key={url} assetUrl={url} onClick={() => setSettings(p => ({...p, customIconUrl: url}))} isSelected={settings.customIconUrl === url} onDelete={() => deleteCustomAsset('icons', url)}/>)}
                             </div>
-                            <div className="flex gap-2">
-                                <input type="url" value={newAssetUrl.icons} onChange={e => setNewAssetUrl(p => ({...p, icons: e.target.value}))} className="w-full p-3 bg-slate-700 rounded-lg border border-slate-600 outline-none transition" placeholder="https://path.to/your/icon.png" />
-                                <button onClick={() => handleAddNewAsset('icons')} className="p-3 bg-slate-600 rounded-lg hover:bg-slate-500"><ImagePlusIcon/></button>
-                            </div>
+                            <ImageUploadZone onFileUpload={(dataUrl) => handleAssetUpload('icons', dataUrl)} />
                          </InputGroup>
-                         <InputGroup label="Background Image URL">
-                              <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 mb-2">
+                         <InputGroup label="Background Image">
+                              <div className="grid grid-cols-4 gap-2 mb-2">
                                {customImageAssets.backgrounds.map(url => <AssetButton key={url} assetUrl={url} onClick={() => setSettings(p => ({...p, backgroundImageUrl: url}))} isSelected={settings.backgroundImageUrl === url} onDelete={() => deleteCustomAsset('backgrounds', url)}/>)}
                             </div>
-                            <div className="flex gap-2">
-                                <input type="url" value={newAssetUrl.backgrounds} onChange={e => setNewAssetUrl(p => ({...p, backgrounds: e.target.value}))} className="w-full p-3 bg-slate-700 rounded-lg border border-slate-600 outline-none transition" placeholder="https://path.to/your/background.jpg" />
-                                <button onClick={() => handleAddNewAsset('backgrounds')} className="p-3 bg-slate-600 rounded-lg hover:bg-slate-500"><ImagePlusIcon/></button>
-                            </div>
+                             <ImageUploadZone onFileUpload={(dataUrl) => handleAssetUpload('backgrounds', dataUrl)} />
                          </InputGroup>
                     </Section>
                     
