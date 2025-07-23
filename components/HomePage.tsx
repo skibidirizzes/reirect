@@ -6,6 +6,7 @@ import type { Settings } from '../types';
 import RedirectPage from './RedirectPage';
 import { BITLY_API_TOKEN, BITLY_API_URL } from '../constants';
 import QrCodeModal from './QrCodeModal';
+import ShareModal from './ShareModal';
 
 const PlusIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>;
 const CopyIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>;
@@ -17,6 +18,7 @@ const MoreVerticalIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20
 const BarChartIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" x2="12" y1="20" y2="10"/><line x1="18" x2="18" y1="20" y2="4"/><line x1="6" x2="6" y1="20" y2="16"/></svg>;
 const RefreshCwIcon = ({className}: {className?: string}) => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/></svg>;
 const QrCodeIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="5" height="5" x="3" y="3" rx="1"/><rect width="5" height="5" x="16" y="3" rx="1"/><rect width="5" height="5" x="3" y="16" rx="1"/><path d="M21 16h-3a2 2 0 0 0-2 2v3"/><path d="M21 21v.01"/><path d="M12 7v3a2 2 0 0 1-2 2H7"/><path d="M3 12h.01"/><path d="M12 3h.01"/><path d="M12 16v.01"/><path d="M16 12h.01"/><path d="M21 12h.01"/><path d="M12 21h.01"/></svg>;
+const ShareIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>;
 
 
 const RedirectCard: React.FC<{
@@ -25,8 +27,9 @@ const RedirectCard: React.FC<{
     onCopy: (link: string) => void,
     onPreview: (config: Settings) => void,
     onQrCode: (config: Settings) => void,
+    onShare: (config: Settings) => void,
     onDelete: (id: string) => void,
-}> = ({ config, clicks, onCopy, onPreview, onQrCode, onDelete }) => {
+}> = ({ config, clicks, onCopy, onPreview, onQrCode, onShare, onDelete }) => {
     const [menuOpen, setMenuOpen] = React.useState(false);
     const menuRef = React.useRef<HTMLDivElement>(null);
     const { t } = useLanguage();
@@ -67,6 +70,9 @@ const RedirectCard: React.FC<{
                                 <Link to={`/edit/${config.id}`} className="flex items-center gap-3 px-4 py-2 text-sm text-slate-300 hover:bg-slate-600/50 w-full text-left transition-colors rounded-t-lg">
                                     <EditIcon /> {t('edit')}
                                 </Link>
+                                <button onClick={() => { setMenuOpen(false); if(config.bitlyLink) onShare(config); }} className="flex items-center gap-3 px-4 py-2 text-sm text-slate-300 hover:bg-slate-600/50 w-full text-left transition-colors" disabled={!config.bitlyLink}>
+                                    <ShareIcon /> {t('home_share')}
+                                </button>
                                 <button onClick={() => { setMenuOpen(false); if(config.bitlyLink) onQrCode(config); }} className="flex items-center gap-3 px-4 py-2 text-sm text-slate-300 hover:bg-slate-600/50 w-full text-left transition-colors" disabled={!config.bitlyLink}>
                                     <QrCodeIcon /> {t('home_qr_code')}
                                 </button>
@@ -101,6 +107,7 @@ const HomePage: React.FC = () => {
   const { lang, setLang, t } = useLanguage();
   const [previewConfig, setPreviewConfig] = React.useState<Settings | null>(null);
   const [qrCodeConfig, setQrCodeConfig] = React.useState<Settings | null>(null);
+  const [shareConfig, setShareConfig] = React.useState<Settings | null>(null);
   const [clickCounts, setClickCounts] = React.useState<Record<string, number>>({});
   const [isLoadingStats, setIsLoadingStats] = React.useState(false);
 
@@ -171,6 +178,10 @@ const HomePage: React.FC = () => {
   const handleQrCode = (config: Settings) => {
       setQrCodeConfig(config);
   }
+
+  const handleShare = (config: Settings) => {
+    setShareConfig(config);
+  }
   
   const handleDelete = (id: string) => {
       if(window.confirm(t('home_delete_confirm'))){
@@ -236,6 +247,7 @@ const HomePage: React.FC = () => {
                 onCopy={handleCopyLink}
                 onPreview={handlePreview}
                 onQrCode={handleQrCode}
+                onShare={handleShare}
                 onDelete={handleDelete}
               />
             ))}
@@ -271,6 +283,11 @@ const HomePage: React.FC = () => {
       {/* QR Code Modal */}
       {qrCodeConfig && (
         <QrCodeModal config={qrCodeConfig} onClose={() => setQrCodeConfig(null)} />
+      )}
+
+      {/* Share Modal */}
+      {shareConfig && (
+        <ShareModal config={shareConfig} onClose={() => setShareConfig(null)} />
       )}
     </div>
   );

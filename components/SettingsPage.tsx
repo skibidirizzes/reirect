@@ -268,8 +268,8 @@ const SettingsPage: React.FC = () => {
         }
     };
     
-    const generateShareableUrl = (settingsData: Omit<Settings, 'id'>) => {
-        const payload: Partial<Settings> = {
+    const generateShareableUrl = (settingsData: Omit<Settings, 'id'>, forceNew: boolean = false) => {
+        const payload: any = {
             redirectUrl: settingsData.redirectUrl,
             displayText: settingsData.displayText,
             customIconUrl: settingsData.customIconUrl,
@@ -281,14 +281,19 @@ const SettingsPage: React.FC = () => {
             captureInfo: settingsData.captureInfo,
             gradientColors: settingsData.gradientColors,
         };
+        // Add a nonce to the payload ONLY when forcing a new, unique link.
+        // This is for new redirects to prevent Bitly from returning a cached short URL for an identical long URL.
+        if (forceNew) {
+            payload.nonce = Date.now() + Math.random();
+        }
         const base64Data = btoa(JSON.stringify(payload));
         return `${APP_BASE_URL}/#/view/${base64Data}`;
     };
 
-    const createOrUpdateBitlyLink = async (): Promise<{bitlyLink?: string, bitlyId?: string}> => {
-        if (!settings.redirectUrl) return {};
+    const createOrUpdateBitlyLink = async (settingsData: Omit<Settings, 'id'>, forceNew: boolean): Promise<{bitlyLink?: string, bitlyId?: string}> => {
+        if (!settingsData.redirectUrl) return {};
         
-        const longUrl = generateShareableUrl(settings);
+        const longUrl = generateShareableUrl(settingsData, forceNew);
         const body: {long_url: string, custom_bitlinks?: string[]} = { long_url: longUrl };
 
         try {
@@ -325,11 +330,13 @@ const SettingsPage: React.FC = () => {
             bitlyId: 'bitlyId' in settings ? settings.bitlyId : undefined 
         };
         
+        const isNewConfig = !id;
         const existingConfig = id ? getConfig(id) : undefined;
-        const relevantSettingsChanged = !existingConfig || JSON.stringify(generateShareableUrl(existingConfig)) !== JSON.stringify(generateShareableUrl(settings));
+        const urlForComparison = (cfg: Omit<Settings, 'id'>) => generateShareableUrl(cfg, false);
+        const settingsChanged = isNewConfig || !existingConfig || !linkData.bitlyLink || urlForComparison(existingConfig) !== urlForComparison(settings);
 
-        if (!linkData.bitlyLink || relevantSettingsChanged) {
-            linkData = await createOrUpdateBitlyLink();
+        if (settingsChanged) {
+            linkData = await createOrUpdateBitlyLink(settings, isNewConfig);
         }
         
         let finalSettings: Omit<Settings, 'id'> = {...settings, ...linkData};

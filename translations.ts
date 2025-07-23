@@ -38,7 +38,12 @@ export const translations = {
     home_total_clicks: "Total Clicks",
     home_delete_confirm: "Are you sure you want to delete this redirect? This action cannot be undone.",
     home_qr_code: "QR Code",
+    home_share: "Share",
     
+    // Share Modal
+    share_modal_title: "Share Link",
+    share_modal_text: "Check out this link for '{name}':",
+
     // SettingsPage
     settings_create_title: "Create New Redirect",
     settings_edit_title: "Edit Redirect",
@@ -147,6 +152,11 @@ export const translations = {
     home_total_clicks: "Aantal Kliks",
     home_delete_confirm: "Weet je zeker dat je deze redirect wilt verwijderen? Deze actie kan niet ongedaan worden gemaakt.",
     home_qr_code: "QR-code",
+    home_share: "Delen",
+
+    // Share Modal
+    share_modal_title: "Link Delen",
+    share_modal_text: "Bekijk deze link voor '{name}':",
 
     // SettingsPage
     settings_create_title: "Nieuwe Redirect Maken",
