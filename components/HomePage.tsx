@@ -19,6 +19,7 @@ const BarChartIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" he
 const RefreshCwIcon = ({className}: {className?: string}) => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/></svg>;
 const QrCodeIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="5" height="5" x="3" y="3" rx="1"/><rect width="5" height="5" x="16" y="3" rx="1"/><rect width="5" height="5" x="3" y="16" rx="1"/><path d="M21 16h-3a2 2 0 0 0-2 2v3"/><path d="M21 21v.01"/><path d="M12 7v3a2 2 0 0 1-2 2H7"/><path d="M3 12h.01"/><path d="M12 3h.01"/><path d="M12 16v.01"/><path d="M16 12h.01"/><path d="M21 12h.01"/><path d="M12 21h.01"/></svg>;
 const ShareIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>;
+const DatabaseIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5V19A9 3 0 0 0 21 19V5"/><path d="M3 12A9 3 0 0 0 21 12"/></svg>;
 
 
 const RedirectCard: React.FC<{
@@ -70,12 +71,16 @@ const RedirectCard: React.FC<{
                                 <Link to={`/edit/${config.id}`} className="flex items-center gap-3 px-4 py-2 text-sm text-slate-300 hover:bg-slate-600/50 w-full text-left transition-colors rounded-t-lg">
                                     <EditIcon /> {t('edit')}
                                 </Link>
+                                <Link to={`/data/${config.id}`} className="flex items-center gap-3 px-4 py-2 text-sm text-slate-300 hover:bg-slate-600/50 w-full text-left transition-colors">
+                                    <DatabaseIcon /> {t('home_view_data')}
+                                </Link>
                                 <button onClick={() => { setMenuOpen(false); if(config.bitlyLink) onShare(config); }} className="flex items-center gap-3 px-4 py-2 text-sm text-slate-300 hover:bg-slate-600/50 w-full text-left transition-colors" disabled={!config.bitlyLink}>
                                     <ShareIcon /> {t('home_share')}
                                 </button>
                                 <button onClick={() => { setMenuOpen(false); if(config.bitlyLink) onQrCode(config); }} className="flex items-center gap-3 px-4 py-2 text-sm text-slate-300 hover:bg-slate-600/50 w-full text-left transition-colors" disabled={!config.bitlyLink}>
                                     <QrCodeIcon /> {t('home_qr_code')}
                                 </button>
+                                <div className="h-px bg-slate-600/50"></div>
                                 <button onClick={() => { setMenuOpen(false); onDelete(config.id); }} className="flex items-center gap-3 px-4 py-2 text-sm text-red-400 hover:bg-red-500/20 w-full text-left transition-colors rounded-b-lg">
                                     <TrashIcon /> {t('delete')}
                                 </button>

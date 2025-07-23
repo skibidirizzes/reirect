@@ -5,6 +5,7 @@ import { LanguageProvider, useLanguage } from './contexts/LanguageContext';
 import RedirectPage from './components/RedirectPage';
 import SettingsPage from './components/SettingsPage';
 import HomePage from './components/HomePage';
+import DataViewerPage from './components/DataViewerPage';
 import type { Notification, NotificationType } from './types';
 
 // --- Notification Components ---
@@ -78,6 +79,7 @@ const AppContent: React.FC = () => {
             <Route path="/view/:data" element={<RedirectPage />} />
             <Route path="/edit/:id" element={<SettingsPage />} />
             <Route path="/new" element={<SettingsPage />} />
+            <Route path="/data/:id" element={<DataViewerPage />} />
             <Route path="/" element={<HomePage />} />
           </Routes>
           <NotificationContainer />

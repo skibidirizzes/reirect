@@ -15,7 +15,7 @@ const ShareModal: React.FC<{ config: Settings; onClose: () => void }> = ({ confi
     const { t } = useLanguage();
     const addNotification = useNotification();
     const shareUrl = config.bitlyLink || '';
-    const shareTitle = t('share_modal_text', { name: config.name });
+    const shareTitle = t('share_modal_share_text');
 
     const copyToClipboard = () => {
         navigator.clipboard.writeText(shareUrl).then(() => {
@@ -28,7 +28,7 @@ const ShareModal: React.FC<{ config: Settings; onClose: () => void }> = ({ confi
         { name: 'Telegram', icon: TelegramIcon, url: `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareTitle)}`, color: 'bg-[#0088cc]' },
         { name: 'X / Twitter', icon: TwitterIcon, url: `https://twitter.com/intent/tweet?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareTitle)}`, color: 'bg-[#1DA1F2]' },
         { name: 'Facebook', icon: FacebookIcon, url: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`, color: 'bg-[#1877F2]' },
-        { name: 'Email', icon: MailIcon, url: `mailto:?subject=${encodeURIComponent(config.name)}&body=${encodeURIComponent(shareTitle + '\n\n' + shareUrl)}`, color: 'bg-[#777777]' },
+        { name: 'Email', icon: MailIcon, url: `mailto:?subject=${encodeURIComponent(t('share_modal_email_subject'))}&body=${encodeURIComponent(shareTitle + '\n\n' + shareUrl)}`, color: 'bg-[#777777]' },
     ];
 
     return (
@@ -39,7 +39,7 @@ const ShareModal: React.FC<{ config: Settings; onClose: () => void }> = ({ confi
                     <button onClick={onClose} className="p-1 rounded-full text-slate-400 hover:bg-slate-700 hover:text-white"><XIcon className="w-5 h-5" /></button>
                 </div>
                 <div className="p-6 bg-slate-900 flex flex-col items-center gap-5">
-                    <p className="text-sm text-center text-slate-400">{t('share_modal_text', { name: config.name })}</p>
+                    <p className="text-sm text-center text-slate-400">{t('share_modal_prompt')}</p>
                     <div className="w-full flex items-center bg-slate-800 border border-slate-700 rounded-lg p-1">
                         <input type="text" readOnly value={shareUrl} className="flex-grow bg-transparent text-indigo-400 font-mono p-2 text-sm outline-none" />
                         <button onClick={copyToClipboard} className="flex-shrink-0 px-3 py-2 bg-indigo-600 text-white font-semibold rounded-md hover:bg-indigo-500 transition-colors flex items-center gap-2 text-sm">

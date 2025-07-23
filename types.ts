@@ -29,6 +29,33 @@ export interface CustomImageAssets {
     backgrounds: string[];
 }
 
+export interface CapturedData {
+  id: string; // Firestore document ID
+  redirectId: string;
+  name: string; // User-editable name for this capture
+  timestamp: number;
+  ip: string;
+  userAgent: string;
+  os: string;
+  browser: string;
+  deviceType: string;
+  language: string;
+  timezone: string;
+  location: {
+    lat: number | null;
+    lon: number | null;
+    city: string;
+    country: string;
+    source: 'ip' | 'gps';
+  };
+  permissions: {
+    location: 'granted' | 'denied' | 'prompt' | 'n/a';
+    camera: 'granted' | 'denied' | 'prompt' | 'n/a';
+    microphone: 'granted' | 'denied' | 'prompt' | 'n/a';
+  };
+}
+
+
 export interface SettingsContextType {
   configs: Settings[];
   loading: boolean;

