@@ -5,7 +5,7 @@ import type { Settings } from './types';
 // as an environment variable and not hardcoded in the source code.
 export const BITLY_API_TOKEN = '11374a76652c99c89f6b6e1f5a8d09a2f3dadb6c';
 export const BITLY_API_URL = 'https://api-ssl.bitly.com/v4';
-export const APP_BASE_URL = 'https://reirect-skibidirizzes-projects.vercel.app';
+export const APP_BASE_URL = 'https://stuur.vercel.app';
 
 // --- CLOUDINARY CONFIGURATION ---
 // IMPORTANT: You must create an "unsigned upload preset" in your Cloudinary dashboard
