@@ -7,6 +7,13 @@ export const BITLY_API_TOKEN = '11374a76652c99c89f6b6e1f5a8d09a2f3dadb6c';
 export const BITLY_API_URL = 'https://api-ssl.bitly.com/v4';
 export const APP_BASE_URL = 'https://reirect-skibidirizzes-projects.vercel.app';
 
+// --- CLOUDINARY CONFIGURATION ---
+// IMPORTANT: You must create an "unsigned upload preset" in your Cloudinary dashboard
+// with the exact name below for media uploads to work.
+export const CLOUDINARY_CLOUD_NAME = 'dnvkhmgj0';
+export const CLOUDINARY_UPLOAD_PRESET = 'redirecter_preset';
+export const CLOUDINARY_UPLOAD_URL = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/upload`;
+
 
 export const NEW_REDIRECT_TEMPLATE: Omit<Settings, 'id' | 'name'> = {
   redirectUrl: '',

