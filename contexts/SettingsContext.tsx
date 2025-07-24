@@ -2,7 +2,7 @@ import * as React from 'react';
 import type { Settings, SettingsContextType, CustomImageAssets, Notification, NotificationType, NotificationContextValue, CapturedData } from '../types';
 import { PREDEFINED_COLORS } from '../constants';
 import { db } from '../firebase';
-import { collection, getDocs, doc, getDoc, setDoc, addDoc, updateDoc, deleteDoc, arrayUnion, arrayRemove, onSnapshot, query, orderBy } from 'firebase/firestore';
+import { collection, getDocs, doc, getDoc, setDoc, addDoc, updateDoc, deleteDoc, arrayUnion, arrayRemove, onSnapshot, query, orderBy, where } from 'firebase/firestore';
 
 const SettingsContext = React.createContext<SettingsContextType | undefined>(undefined);
 
