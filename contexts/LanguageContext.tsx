@@ -1,5 +1,6 @@
 import * as React from 'react';
-import { translations, Language } from '../translations';
+import { translations } from '../translations';
+import type { Language } from '../types';
 
 interface LanguageContextType {
   lang: Language;
@@ -11,6 +12,20 @@ const LanguageContext = React.createContext<LanguageContextType | undefined>(und
 
 const getNestedValue = (obj: any, path: string) => {
     return path.split('.').reduce((acc, part) => acc && acc[part], obj);
+};
+
+export const getTranslator = (lang: Language) => {
+    return (key: string, replacements?: Record<string, string | number>): string => {
+        let translation = getNestedValue(translations[lang], key) || getNestedValue(translations.en, key) || key;
+
+        if (replacements) {
+            Object.keys(replacements).forEach(placeholder => {
+                translation = translation.replace(`{${placeholder}}`, String(replacements[placeholder]));
+            });
+        }
+
+        return translation;
+    };
 };
 
 

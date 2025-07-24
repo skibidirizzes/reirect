@@ -7,6 +7,8 @@ import { useSettings, useNotification } from '../contexts/SettingsContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { NEW_REDIRECT_TEMPLATE, BITLY_API_TOKEN, BITLY_API_URL, CARD_STYLES, APP_BASE_URL } from '../constants';
 import RedirectPage from './RedirectPage';
+import { db } from '../firebase';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 
 // --- Re-usable UI Components ---
 
@@ -212,6 +214,15 @@ const DataCapturePreview: React.FC = () => {
 
 // --- Main Settings Page ---
 
+const generateRandomString = (length: number) => {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    let result = '';
+    for (let i = 0; i < length; i++) {
+        result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return result;
+};
+
 const SettingsPage: React.FC = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
@@ -301,36 +312,20 @@ const SettingsPage: React.FC = () => {
         }
     };
     
-    const generateShareableUrl = (settingsData: Settings, forceNew: boolean = false) => {
-        // Create a copy to avoid mutating the original object.
-        const payload: Partial<Settings> & { nonce?: number; redirectId?: string } = {...settingsData};
-        
-        // CRITICAL FIX: Embed the redirect's unique ID into the payload.
-        // This is essential for associating captured data back to the correct redirect config.
-        payload.redirectId = settingsData.id;
-
-        if (forceNew) {
-            payload.nonce = Date.now() + Math.random();
-        }
-        
-        // Clean up fields that don't need to be in the URL.
-        delete payload.id;
-        delete payload.name;
-        delete payload.bitlyId;
-        delete payload.bitlyLink;
-        delete payload.customBitlyPath;
-
-        const base64Data = btoa(JSON.stringify(payload));
-        return `${APP_BASE_URL}/#/view/${base64Data}`;
+    const generateShareableUrl = (settingsData: Settings) => {
+        return `${APP_BASE_URL}/#/view/${settingsData.urlIdentifier}`;
     };
 
-    const createOrUpdateBitlyLink = async (settingsData: Settings, forceNew: boolean): Promise<{bitlyLink?: string, bitlyId?: string}> => {
-        if (!settingsData.redirectUrl) return {};
+    const createOrUpdateBitlyLink = async (settingsData: Settings): Promise<{bitlyLink?: string, bitlyId?: string}> => {
+        if (!settingsData.redirectUrl || !settingsData.urlIdentifier) return {};
         
-        const longUrl = generateShareableUrl(settingsData, forceNew);
+        const longUrl = generateShareableUrl(settingsData);
         const body: {long_url: string, custom_bitlinks?: string[]} = { long_url: longUrl };
 
         try {
+            // NOTE: Bitly will either create a new link or return an existing one for the same long_url.
+            // If you need a *new* Bitly link for every single save, the long_url would need to be unique each time.
+            // For this use case, having one stable Bitly link pointing to our stable redirect identifier is correct.
             const response = await fetch(`${BITLY_API_URL}/bitlinks`, {
                 method: 'POST',
                 headers: {
@@ -358,20 +353,48 @@ const SettingsPage: React.FC = () => {
             return;
         }
         setIsSaving(true);
+
+        let finalUrlIdentifier = settings.urlIdentifier.trim().replace(/\s+/g, '-');
+
+        // 1. Handle URL Identifier
+        if (!finalUrlIdentifier) {
+            // Generate a new unique short ID
+            let isUnique = false;
+            while (!isUnique) {
+                finalUrlIdentifier = generateRandomString(5);
+                const q = query(collection(db, "redirects"), where("urlIdentifier", "==", finalUrlIdentifier));
+                const snapshot = await getDocs(q);
+                isUnique = snapshot.empty;
+            }
+        } else {
+            // Check for uniqueness of custom slug
+            const q = query(collection(db, "redirects"), where("urlIdentifier", "==", finalUrlIdentifier));
+            const snapshot = await getDocs(q);
+            const isNotUnique = !snapshot.empty && snapshot.docs[0].id !== (settings as Settings).id;
+
+            if (isNotUnique) {
+                addNotification({ type: 'error', message: 'settings_url_identifier_error' });
+                setIsSaving(false);
+                return;
+            }
+        }
         
-        if ('id' in settings && settings.id) { // Existing config
-            const linkData = await createOrUpdateBitlyLink(settings, false);
-            const finalSettings: Partial<Omit<Settings, 'id'>> = { ...settings, ...linkData };
+        const settingsToSave = { ...settings, urlIdentifier: finalUrlIdentifier };
+        
+        if ('id' in settingsToSave && settingsToSave.id) { // Existing config
+            const linkData = await createOrUpdateBitlyLink(settingsToSave);
+            const finalSettings: Partial<Omit<Settings, 'id'>> = { ...settingsToSave, ...linkData };
             delete (finalSettings as any).id;
             
-            await updateConfig(settings.id, finalSettings);
+            await updateConfig(settingsToSave.id, finalSettings);
             addNotification({ type: 'success', message: 'notification_redirect_updated' });
         } else { // New config
-            const newConfigData: Omit<Settings, 'id'> = { ...settings };
-            const tempConfigForLink = await addConfig(newConfigData);
-            if (tempConfigForLink) {
-                 const linkData = await createOrUpdateBitlyLink(tempConfigForLink, true);
-                 await updateConfig(tempConfigForLink.id, linkData);
+            // First save without Bitly link to get an ID
+            const tempConfig = await addConfig(settingsToSave);
+            if (tempConfig) {
+                 // Now create Bitly link with the final identifier and update the doc
+                 const linkData = await createOrUpdateBitlyLink(tempConfig);
+                 await updateConfig(tempConfig.id, linkData);
                  addNotification({ type: 'success', message: 'notification_redirect_created' });
             }
         }
@@ -421,10 +444,25 @@ const SettingsPage: React.FC = () => {
                         <InputGroup label={t('settings_redirect_url')} description={t('settings_redirect_url_desc')}>
                             <input type="url" name="redirectUrl" value={settings.redirectUrl} onChange={handleChange} className="w-full p-3 bg-slate-700 rounded-lg border border-slate-600 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition" placeholder={t('settings_redirect_url_placeholder')} />
                         </InputGroup>
+                    </Section>
+
+                    <Section title={t('settings_section_link')}>
+                        <InputGroup label={t('settings_url_identifier')} description={t('settings_url_identifier_desc')}>
+                            <div className="flex items-center">
+                                <span className="px-3 py-3 bg-slate-800 text-slate-400 border border-r-0 border-slate-600 rounded-l-lg whitespace-nowrap text-sm sm:text-base">{APP_BASE_URL}/#/view/</span>
+                                <input type="text" name="urlIdentifier" value={settings.urlIdentifier} onChange={handleChange} className="w-full p-3 bg-slate-700 rounded-r-lg border border-slate-600 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition" placeholder={t('settings_url_identifier_placeholder')} />
+                            </div>
+                        </InputGroup>
                         <InputGroup label={t('settings_bitly_path')} description={t('settings_bitly_path_desc')}>
                             <div className="flex items-center">
                                <span className="px-3 py-3 bg-slate-800 text-slate-400 border border-r-0 border-slate-600 rounded-l-lg">bit.ly/</span>
                                <input type="text" name="customBitlyPath" value={'customBitlyPath' in settings ? settings.customBitlyPath : ''} onChange={handleChange} className="w-full p-3 bg-slate-700 rounded-r-lg border border-slate-600 outline-none transition disabled:bg-slate-800 disabled:text-slate-400 disabled:cursor-not-allowed" placeholder={t('settings_bitly_path_placeholder')} disabled />
+                            </div>
+                        </InputGroup>
+                         <InputGroup label={t('settings_redirect_language')} description={t('settings_redirect_language_desc')}>
+                            <div className="flex items-center gap-2 rounded-lg bg-slate-900/50 p-1 w-min">
+                                <button type="button" onClick={() => setSettings(p => ({...p, redirectLanguage: 'en'}))} className={`px-4 py-2 text-sm font-bold rounded-md transition-colors ${settings.redirectLanguage === 'en' ? 'bg-indigo-600 text-white' : 'text-slate-300 hover:bg-slate-700'}`}>English</button>
+                                <button type="button" onClick={() => setSettings(p => ({...p, redirectLanguage: 'nl'}))} className={`px-4 py-2 text-sm font-bold rounded-md transition-colors ${settings.redirectLanguage === 'nl' ? 'bg-indigo-600 text-white' : 'text-slate-300 hover:bg-slate-700'}`}>Nederlands</button>
                             </div>
                         </InputGroup>
                     </Section>

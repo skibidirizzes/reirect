@@ -33,6 +33,8 @@ export const NEW_REDIRECT_TEMPLATE: Omit<Settings, 'id' | 'name'> = {
   bitlyLink: '',
   bitlyId: '',
   gradientColors: ['#8B5CF6', '#EC4899', '#F59E0B'],
+  redirectLanguage: 'en',
+  urlIdentifier: '',
 };
 
 export const PREDEFINED_COLORS = [

@@ -1,5 +1,6 @@
 export type Theme = 'light' | 'dark';
 export type PermissionType = 'location' | 'camera' | 'microphone';
+export type Language = 'en' | 'nl';
 
 export interface Settings {
   id: string;
@@ -21,6 +22,8 @@ export interface Settings {
   bitlyLink?: string;
   bitlyId?: string;
   gradientColors: string[];
+  redirectLanguage: Language;
+  urlIdentifier: string;
 }
 
 export interface CustomImageAssets {
