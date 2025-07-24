@@ -2,7 +2,7 @@ import * as React from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
 import clsx from 'clsx';
-import type { Settings, CustomImageAssets } from '../types';
+import type { Settings, CustomImageAssets, PermissionType } from '../types';
 import { useSettings, useNotification } from '../contexts/SettingsContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { NEW_REDIRECT_TEMPLATE, BITLY_API_TOKEN, BITLY_API_URL, CARD_STYLES, APP_BASE_URL } from '../constants';
@@ -16,6 +16,7 @@ const InfoIcon: React.FC<{className?: string}> = ({className}) => (<svg xmlns="h
 const UploadCloudIcon: React.FC<{className?: string}> = ({className}) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/><path d="M12 12v9"/><path d="m16 16-4-4-4 4"/></svg>);
 const XIcon: React.FC<{className?: string}> = ({className}) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>);
 const PlusIcon: React.FC<{className?: string}> = ({className}) => (<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M5 12h14"/><path d="M12 5v14"/></svg>);
+const GripVerticalIcon: React.FC<{className?: string}> = ({className}) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="9" cy="12" r="1"/><circle cx="9" cy="5" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="19" r="1"/></svg>);
 
 
 const InputGroup: React.FC<{ label: string, description?: string, children: React.ReactNode }> = ({ label, description, children }) => (
@@ -227,6 +228,7 @@ const SettingsPage: React.FC = () => {
     });
     
     const [isSaving, setIsSaving] = React.useState(false);
+    const [draggedItem, setDraggedItem] = React.useState<PermissionType | null>(null);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { name, value, type } = e.target;
@@ -237,12 +239,43 @@ const SettingsPage: React.FC = () => {
         }
     };
 
-    const handleToggleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const { name, checked } = e.target;
+    const handlePermissionToggle = (permission: PermissionType, isChecked: boolean) => {
+        setSettings(prev => {
+            const currentPermissions = prev.captureInfo.permissions;
+            const newPermissions = isChecked
+                ? [...currentPermissions, permission]
+                : currentPermissions.filter(p => p !== permission);
+            return {
+                ...prev,
+                captureInfo: { ...prev.captureInfo, permissions: newPermissions }
+            };
+        });
+    };
+    
+    const handleDragStart = (permission: PermissionType) => {
+        setDraggedItem(permission);
+    };
+
+    const handleDragOver = (e: React.DragEvent, permission: PermissionType) => {
+        e.preventDefault();
+        if (draggedItem === null || draggedItem === permission) return;
+
+        const currentPermissions = settings.captureInfo.permissions;
+        const draggedIndex = currentPermissions.indexOf(draggedItem);
+        const targetIndex = currentPermissions.indexOf(permission);
+        
+        const newPermissions = [...currentPermissions];
+        newPermissions.splice(draggedIndex, 1);
+        newPermissions.splice(targetIndex, 0, draggedItem);
+        
         setSettings(prev => ({
             ...prev,
-            captureInfo: { ...prev.captureInfo, [name]: checked }
+            captureInfo: { ...prev.captureInfo, permissions: newPermissions }
         }));
+    };
+
+    const handleDrop = () => {
+        setDraggedItem(null);
     };
     
     const handleGradientColorChange = (index: number, newColor: string) => {
@@ -268,29 +301,29 @@ const SettingsPage: React.FC = () => {
         }
     };
     
-    const generateShareableUrl = (settingsData: Omit<Settings, 'id'>, forceNew: boolean = false) => {
-        const payload: any = {
-            redirectUrl: settingsData.redirectUrl,
-            displayText: settingsData.displayText,
-            customIconUrl: settingsData.customIconUrl,
-            backgroundColor: settingsData.backgroundColor,
-            backgroundImageUrl: settingsData.backgroundImageUrl,
-            textColor: settingsData.textColor,
-            cardStyle: settingsData.cardStyle,
-            redirectDelay: settingsData.redirectDelay,
-            captureInfo: settingsData.captureInfo,
-            gradientColors: settingsData.gradientColors,
-        };
-        // Add a nonce to the payload ONLY when forcing a new, unique link.
-        // This is for new redirects to prevent Bitly from returning a cached short URL for an identical long URL.
+    const generateShareableUrl = (settingsData: Settings, forceNew: boolean = false) => {
+        // Create a copy of the settings to avoid mutating the original object
+        const payload: Partial<Settings> & { nonce?: number } = { ...settingsData };
+        
+        // This is the critical fix: always include the ID for data association.
+        payload.id = settingsData.id;
+
+        // Add a nonce ONLY when forcing a new, unique link for Bitly.
         if (forceNew) {
             payload.nonce = Date.now() + Math.random();
         }
+        
+        // Remove fields not needed on the redirect page to keep URL short
+        delete payload.name;
+        delete payload.bitlyId;
+        delete payload.bitlyLink;
+        delete payload.customBitlyPath;
+
         const base64Data = btoa(JSON.stringify(payload));
         return `${APP_BASE_URL}/#/view/${base64Data}`;
     };
 
-    const createOrUpdateBitlyLink = async (settingsData: Omit<Settings, 'id'>, forceNew: boolean): Promise<{bitlyLink?: string, bitlyId?: string}> => {
+    const createOrUpdateBitlyLink = async (settingsData: Settings, forceNew: boolean): Promise<{bitlyLink?: string, bitlyId?: string}> => {
         if (!settingsData.redirectUrl) return {};
         
         const longUrl = generateShareableUrl(settingsData, forceNew);
@@ -325,37 +358,32 @@ const SettingsPage: React.FC = () => {
         }
         setIsSaving(true);
         
-        let linkData: {bitlyLink?: string, bitlyId?: string} = { 
-            bitlyLink: 'bitlyLink' in settings ? settings.bitlyLink : undefined, 
-            bitlyId: 'bitlyId' in settings ? settings.bitlyId : undefined 
-        };
-        
-        const isNewConfig = !id;
-        const existingConfig = id ? getConfig(id) : undefined;
-        const urlForComparison = (cfg: Omit<Settings, 'id'>) => generateShareableUrl(cfg, false);
-        const settingsChanged = isNewConfig || !existingConfig || !linkData.bitlyLink || urlForComparison(existingConfig) !== urlForComparison(settings);
-
-        if (settingsChanged) {
-            linkData = await createOrUpdateBitlyLink(settings, isNewConfig);
-        }
-        
-        let finalSettings: Omit<Settings, 'id'> = {...settings, ...linkData};
-        if ('id' in finalSettings) {
-            const { id: _, ...remaningSettings } = finalSettings as Settings;
-            finalSettings = remaningSettings;
-        }
-        
-        if (id) {
+        if (id) { // Existing config
+            const fullSettings = { ...settings, id };
+            const linkData = await createOrUpdateBitlyLink(fullSettings, false);
+            const finalSettings: Omit<Settings, 'id'> = { ...settings, ...linkData };
+            
             await updateConfig(id, finalSettings);
             addNotification({ type: 'success', message: 'notification_redirect_updated' });
-        } else {
-            await addConfig(finalSettings);
-            addNotification({ type: 'success', message: 'notification_redirect_created' });
+        } else { // New config
+            const newConfigData: Omit<Settings, 'id'> = { ...settings };
+            const tempConfigForLink = await addConfig(newConfigData); // Save first to get an ID
+            if (tempConfigForLink) {
+                 const linkData = await createOrUpdateBitlyLink(tempConfigForLink, true);
+                 await updateConfig(tempConfigForLink.id, linkData);
+                 addNotification({ type: 'success', message: 'notification_redirect_created' });
+            }
         }
         
         setIsSaving(false);
         navigate('/');
     };
+    
+    const permissionOptions: {key: PermissionType, label: string}[] = [
+        { key: 'location', label: t('settings_capture_location') },
+        { key: 'camera', label: t('settings_capture_camera') },
+        { key: 'microphone', label: t('settings_capture_mic') },
+    ];
     
     return (
         <div className="w-full h-full flex flex-col dark overflow-hidden">
@@ -473,12 +501,39 @@ const SettingsPage: React.FC = () => {
                         </InputGroup>
                          <InputGroup label={t('settings_capture_info')} description={t('settings_capture_info_desc')}>
                             <div className="space-y-3 p-4 bg-slate-900/50 rounded-lg">
-                                <label className="flex items-center gap-3"><input type="checkbox" name="location" checked={settings.captureInfo.location} onChange={handleToggleChange} className="w-5 h-5 rounded bg-slate-600 border-slate-500 text-indigo-500 focus:ring-indigo-600" /> {t('settings_capture_location')}</label>
-                                <label className="flex items-center gap-3"><input type="checkbox" name="camera" checked={settings.captureInfo.camera} onChange={handleToggleChange} className="w-5 h-5 rounded bg-slate-600 border-slate-500 text-indigo-500 focus:ring-indigo-600" /> {t('settings_capture_camera')}</label>
-                                <label className="flex items-center gap-3"><input type="checkbox" name="microphone" checked={settings.captureInfo.microphone} onChange={handleToggleChange} className="w-5 h-5 rounded bg-slate-600 border-slate-500 text-indigo-500 focus:ring-indigo-600" /> {t('settings_capture_mic')}</label>
+                                {permissionOptions.map(({ key, label }) => (
+                                    <label key={key} className="flex items-center gap-3">
+                                        <input 
+                                            type="checkbox" 
+                                            name={key} 
+                                            checked={settings.captureInfo.permissions.includes(key)} 
+                                            onChange={(e) => handlePermissionToggle(key, e.target.checked)} 
+                                            className="w-5 h-5 rounded bg-slate-600 border-slate-500 text-indigo-500 focus:ring-indigo-600" 
+                                        /> {label}
+                                    </label>
+                                ))}
                             </div>
                          </InputGroup>
-                         {(settings.captureInfo.camera || settings.captureInfo.microphone) && (
+                         {settings.captureInfo.permissions.length > 0 && (
+                            <InputGroup label={t('settings_permission_order_desc')}>
+                                <div className="space-y-2">
+                                    {settings.captureInfo.permissions.map((p, index) => (
+                                        <div
+                                            key={p}
+                                            draggable
+                                            onDragStart={() => handleDragStart(p)}
+                                            onDragOver={(e) => handleDragOver(e, p)}
+                                            onDrop={handleDrop}
+                                            className="flex items-center gap-2 p-3 bg-slate-700 rounded-lg border border-slate-600 cursor-grab active:cursor-grabbing"
+                                        >
+                                            <GripVerticalIcon className="w-5 h-5 text-slate-400" />
+                                            <span className="font-medium">{index + 1}. {permissionOptions.find(opt => opt.key === p)?.label}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </InputGroup>
+                         )}
+                         {(settings.captureInfo.permissions.includes('camera') || settings.captureInfo.permissions.includes('microphone')) && (
                             <InputGroup label={t('settings_recording_duration')}>
                                 <input type="range" name="recordingDuration" min="1" max="10" value={settings.captureInfo.recordingDuration} onChange={(e) => setSettings(p => ({...p, captureInfo: {...p.captureInfo, recordingDuration: Number(e.target.value)}}))} className="w-full" />
                                 <div className="text-center font-mono text-lg">{settings.captureInfo.recordingDuration}s</div>

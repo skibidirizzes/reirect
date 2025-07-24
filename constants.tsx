@@ -19,9 +19,7 @@ export const NEW_REDIRECT_TEMPLATE: Omit<Settings, 'id' | 'name'> = {
   cardStyle: 'default-white',
   redirectDelay: 5,
   captureInfo: {
-    location: false,
-    camera: false,
-    microphone: false,
+    permissions: [],
     recordingDuration: 5,
   },
   customBitlyPath: '',

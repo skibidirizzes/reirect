@@ -71,9 +71,6 @@ const RedirectCard: React.FC<{
                                 <Link to={`/edit/${config.id}`} className="flex items-center gap-3 px-4 py-2 text-sm text-slate-300 hover:bg-slate-600/50 w-full text-left transition-colors rounded-t-lg">
                                     <EditIcon /> {t('edit')}
                                 </Link>
-                                <Link to={`/data/${config.id}`} className="flex items-center gap-3 px-4 py-2 text-sm text-slate-300 hover:bg-slate-600/50 w-full text-left transition-colors">
-                                    <DatabaseIcon /> {t('home_view_data')}
-                                </Link>
                                 <button onClick={() => { setMenuOpen(false); if(config.bitlyLink) onShare(config); }} className="flex items-center gap-3 px-4 py-2 text-sm text-slate-300 hover:bg-slate-600/50 w-full text-left transition-colors" disabled={!config.bitlyLink}>
                                     <ShareIcon /> {t('home_share')}
                                 </button>
@@ -94,11 +91,14 @@ const RedirectCard: React.FC<{
                     <span className="text-sm">{t('home_total_clicks')}</span>
                 </div>
             </div>
-            <div className="border-t border-slate-700/50 p-3 flex items-center gap-2">
-                 <button onClick={() => onPreview(config)} className="flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm font-semibold text-slate-300 bg-slate-700/50 hover:bg-slate-700 rounded-md transition-colors">
+            <div className="border-t border-slate-700/50 p-3 grid grid-cols-3 items-center gap-2">
+                 <button onClick={() => onPreview(config)} className="flex items-center justify-center gap-2 px-3 py-2 text-sm font-semibold text-slate-300 bg-slate-700/50 hover:bg-slate-700 rounded-md transition-colors">
                     <EyeIcon /> {t('preview')}
                  </button>
-                 <button onClick={() => config.bitlyLink && onCopy(config.bitlyLink)} disabled={!config.bitlyLink} className="flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm font-semibold rounded-md transition-colors bg-indigo-600 text-white hover:bg-indigo-500 disabled:bg-indigo-400 disabled:cursor-not-allowed">
+                 <Link to={`/data/${config.id}`} className="flex items-center justify-center gap-2 px-3 py-2 text-sm font-semibold text-slate-300 bg-slate-700/50 hover:bg-slate-700 rounded-md transition-colors">
+                    <DatabaseIcon /> {t('home_view_data')}
+                 </Link>
+                 <button onClick={() => config.bitlyLink && onCopy(config.bitlyLink)} disabled={!config.bitlyLink} className="flex items-center justify-center gap-2 px-3 py-2 text-sm font-semibold rounded-md transition-colors bg-indigo-600 text-white hover:bg-indigo-500 disabled:bg-indigo-400 disabled:cursor-not-allowed">
                     <CopyIcon /> {t('copy_link')}
                  </button>
             </div>
