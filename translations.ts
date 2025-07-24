@@ -29,6 +29,7 @@ export const translations = {
     notification_redirect_created: "Redirect created successfully!",
     notification_name_updated: "Capture name updated.",
     notification_name_update_failed: "Failed to update name.",
+    notification_new_data: "New data captured!",
 
     // Password Gate
     password_gate_title: "Access Required",
@@ -180,6 +181,7 @@ export const translations = {
     notification_redirect_created: "Redirect succesvol aangemaakt!",
     notification_name_updated: "Naam van de opname bijgewerkt.",
     notification_name_update_failed: "Kon de naam niet bijwerken.",
+    notification_new_data: "Nieuwe gegevens vastgelegd!",
 
     // Password Gate
     password_gate_title: "Toegang Vereist",

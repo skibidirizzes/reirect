@@ -26,12 +26,13 @@ const DatabaseIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" he
 const RedirectCard: React.FC<{
     config: Settings,
     clicks: number | undefined,
+    unreadCount: number,
     onCopy: (link: string) => void,
     onPreview: (config: Settings) => void,
     onQrCode: (config: Settings) => void,
     onShare: (config: Settings) => void,
     onDelete: (id: string) => void,
-}> = ({ config, clicks, onCopy, onPreview, onQrCode, onShare, onDelete }) => {
+}> = ({ config, clicks, unreadCount, onCopy, onPreview, onQrCode, onShare, onDelete }) => {
     const [menuOpen, setMenuOpen] = React.useState(false);
     const menuRef = React.useRef<HTMLDivElement>(null);
     const { t } = useLanguage();
@@ -45,6 +46,8 @@ const RedirectCard: React.FC<{
         document.addEventListener("mousedown", handleClickOutside);
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
+    
+    const cardButtonClass = "w-full flex items-center justify-center gap-2 px-3 py-2 text-sm font-semibold text-slate-300 bg-slate-700/50 hover:bg-slate-700 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed";
 
     return (
         <div className="bg-slate-800/50 rounded-xl border border-slate-700/50 transition-all duration-300 hover:border-slate-600 hover:bg-slate-800 flex flex-col animate-fade-in-up">
@@ -93,13 +96,18 @@ const RedirectCard: React.FC<{
                 </div>
             </div>
             <div className="border-t border-slate-700/50 p-3 grid grid-cols-3 items-center gap-2">
-                 <button onClick={() => onPreview(config)} className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm font-semibold text-slate-300 bg-slate-700/50 hover:bg-slate-700 rounded-md transition-colors">
+                 <button onClick={() => onPreview(config)} className={cardButtonClass}>
                     <EyeIcon /> {t('preview')}
                  </button>
-                 <Link to={`/data/${config.id}`} className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm font-semibold text-slate-300 bg-slate-700/50 hover:bg-slate-700 rounded-md transition-colors text-center">
+                 <Link to={`/data/${config.id}`} className={`${cardButtonClass} relative`}>
                     <DatabaseIcon /> {t('home_view_data')}
+                    {unreadCount > 0 && (
+                        <span className="absolute -top-2 -right-2 w-5 h-5 bg-red-600 text-white text-xs font-bold rounded-full flex items-center justify-center animate-scale-in">
+                            {unreadCount}
+                        </span>
+                    )}
                  </Link>
-                 <button onClick={() => config.bitlyLink && onCopy(config.bitlyLink)} disabled={!config.bitlyLink} className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm font-semibold rounded-md transition-colors bg-indigo-600 text-white hover:bg-indigo-500 disabled:bg-indigo-400 disabled:cursor-not-allowed">
+                 <button onClick={() => config.bitlyLink && onCopy(config.bitlyLink)} disabled={!config.bitlyLink} className={cardButtonClass}>
                     <CopyIcon /> {t('copy_link')}
                  </button>
             </div>
@@ -108,7 +116,7 @@ const RedirectCard: React.FC<{
 };
 
 const HomePage: React.FC = () => {
-  const { configs, deleteConfig } = useSettings();
+  const { configs, deleteConfig, unreadCounts } = useSettings();
   const addNotification = useNotification();
   const { lang, setLang, t } = useLanguage();
   const [previewConfig, setPreviewConfig] = React.useState<Settings | null>(null);
@@ -269,6 +277,7 @@ const HomePage: React.FC = () => {
                 key={config.id} 
                 config={config} 
                 clicks={clickCounts[config.id]}
+                unreadCount={unreadCounts[config.id] || 0}
                 onCopy={handleCopyLink}
                 onPreview={handlePreview}
                 onQrCode={handleQrCode}

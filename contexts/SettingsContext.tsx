@@ -1,8 +1,8 @@
 import * as React from 'react';
-import type { Settings, SettingsContextType, CustomImageAssets, Notification, NotificationType, NotificationContextValue } from '../types';
+import type { Settings, SettingsContextType, CustomImageAssets, Notification, NotificationType, NotificationContextValue, CapturedData } from '../types';
 import { PREDEFINED_COLORS } from '../constants';
 import { db } from '../firebase';
-import { collection, getDocs, doc, getDoc, setDoc, addDoc, updateDoc, deleteDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
+import { collection, getDocs, doc, getDoc, setDoc, addDoc, updateDoc, deleteDoc, arrayUnion, arrayRemove, onSnapshot, query, orderBy } from 'firebase/firestore';
 
 const SettingsContext = React.createContext<SettingsContextType | undefined>(undefined);
 
@@ -11,24 +11,43 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [customImageAssets, setCustomImageAssets] = React.useState<CustomImageAssets>({ icons: [], backgrounds: [] });
   const [loading, setLoading] = React.useState(true);
   const addNotification = useNotification();
+  
+  // For Real-time notifications
+  const [totalCaptureCounts, setTotalCaptureCounts] = React.useState<Record<string, number>>({});
+  const [unreadCounts, setUnreadCounts] = React.useState<Record<string, number>>({});
+  const audioCtxRef = React.useRef<AudioContext | null>(null);
+
+  const playNotificationSound = React.useCallback(() => {
+    if (!audioCtxRef.current) {
+        audioCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+    }
+    const audioCtx = audioCtxRef.current;
+    const oscillator = audioCtx.createOscillator();
+    const gainNode = audioCtx.createGain();
+    oscillator.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
+    
+    oscillator.type = 'sine';
+    oscillator.frequency.setValueAtTime(600, audioCtx.currentTime);
+    gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime); // Low volume
+    gainNode.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 0.5);
+
+    oscillator.start(audioCtx.currentTime);
+    oscillator.stop(audioCtx.currentTime + 0.5);
+  }, []);
 
   React.useEffect(() => {
+    // --- Data Fetching ---
     const fetchData = async () => {
       try {
-        // Fetch configs
         const configsSnapshot = await getDocs(collection(db, "redirects"));
         const configsData = configsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Settings));
         setConfigs(configsData);
 
-        // Fetch assets
         const assetsDocRef = doc(db, "assets", "user_assets");
         const assetsDoc = await getDoc(assetsDocRef);
-        if (assetsDoc.exists()) {
-          setCustomImageAssets(assetsDoc.data() as CustomImageAssets);
-        } else {
-           // Initialize asset document if it doesn't exist
-           await setDoc(assetsDocRef, { icons: [], backgrounds: [] });
-        }
+        if (assetsDoc.exists()) setCustomImageAssets(assetsDoc.data() as CustomImageAssets);
+        else await setDoc(assetsDocRef, { icons: [], backgrounds: [] });
 
       } catch (error) {
         console.error("Error fetching data from Firestore:", error);
@@ -37,9 +56,50 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         setLoading(false);
       }
     };
-
     fetchData();
-  }, [addNotification]);
+
+    // --- Real-time Capture Listener ---
+    const q = query(collection(db, "captures"));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+        const newTotalCounts: Record<string, number> = {};
+        snapshot.forEach((doc) => {
+            const capture = doc.data() as CapturedData;
+            newTotalCounts[capture.redirectId] = (newTotalCounts[capture.redirectId] || 0) + 1;
+        });
+
+        // Check if a notification should be triggered
+        const previousTotal = Object.values(totalCaptureCounts).reduce((a, b) => a + b, 0);
+        const newTotal = Object.values(newTotalCounts).reduce((a, b) => a + b, 0);
+        if (newTotal > previousTotal && previousTotal > 0) {
+            playNotificationSound();
+            addNotification({ type: 'info', message: 'notification_new_data' });
+        }
+        
+        setTotalCaptureCounts(newTotalCounts);
+        
+        // Update unread counts based on localStorage
+        const seenCountsStr = localStorage.getItem('seenCaptures');
+        const seenCounts: Record<string, number> = seenCountsStr ? JSON.parse(seenCountsStr) : {};
+        const newUnreadCounts: Record<string, number> = {};
+        Object.keys(newTotalCounts).forEach(redirectId => {
+            newUnreadCounts[redirectId] = newTotalCounts[redirectId] - (seenCounts[redirectId] || 0);
+        });
+        setUnreadCounts(newUnreadCounts);
+    });
+
+    return () => unsubscribe();
+  }, [addNotification, playNotificationSound, totalCaptureCounts]); // totalCaptureCounts is a proxy to detect changes
+
+
+  const clearUnreadCount = React.useCallback((redirectId: string) => {
+    const seenCountsStr = localStorage.getItem('seenCaptures');
+    const seenCounts: Record<string, number> = seenCountsStr ? JSON.parse(seenCountsStr) : {};
+    
+    seenCounts[redirectId] = totalCaptureCounts[redirectId] || 0;
+    localStorage.setItem('seenCaptures', JSON.stringify(seenCounts));
+
+    setUnreadCounts(prev => ({...prev, [redirectId]: 0 }));
+  }, [totalCaptureCounts]);
 
 
   const addConfig = async (configData: Omit<Settings, 'id'>): Promise<Settings | null> => {
@@ -132,6 +192,8 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     customImageAssets,
     addCustomAsset,
     deleteCustomAsset,
+    unreadCounts,
+    clearUnreadCount,
   };
 
   return <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>;
@@ -154,19 +216,8 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const [notifications, setNotifications] = React.useState<Notification[]>([]);
 
   const addNotification = React.useCallback((notification: Omit<Notification, 'id'>) => {
-    // Check for complex message (key with replacements)
-    let message = notification.message;
-    let replacements: Record<string, string> | undefined;
-    if(message.includes(',')) {
-        const parts = message.split(',');
-        message = parts[0];
-        try {
-            replacements = JSON.parse(parts.slice(1).join(','));
-        } catch(e) { /* ignore malformed replacements */ }
-    }
-
-    const newNotification = { ...notification, id: Date.now(), message };
-    setNotifications(prev => [...prev, newNotification]);
+    const newNotification = { ...notification, id: Date.now() };
+    setNotifications(prev => [newNotification, ...prev]);
     setTimeout(() => {
       setNotifications(prev => prev.filter(n => n.id !== newNotification.id));
     }, 5000); // Auto-dismiss after 5 seconds

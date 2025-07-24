@@ -116,7 +116,7 @@ const CaptureAccordion: React.FC<{ capture: CapturedData }> = ({ capture }) => {
 
 const DataViewerPage: React.FC = () => {
     const { id } = useParams<{ id: string }>();
-    const { getConfig } = useSettings();
+    const { getConfig, clearUnreadCount } = useSettings();
     const { t } = useLanguage();
     const [captures, setCaptures] = React.useState<CapturedData[]>([]);
     const [loading, setLoading] = React.useState(true);
@@ -124,6 +124,9 @@ const DataViewerPage: React.FC = () => {
 
     React.useEffect(() => {
         if (!id) return;
+        
+        // Mark captures for this redirect as "read"
+        clearUnreadCount(id);
         
         const currentConfig = getConfig(id);
         if (currentConfig) {
@@ -144,7 +147,7 @@ const DataViewerPage: React.FC = () => {
         };
 
         fetchCaptures();
-    }, [id, getConfig]);
+    }, [id, getConfig, clearUnreadCount]);
     
     return (
         <div className="w-full h-full p-4 sm:p-6 lg:p-8 overflow-y-auto dark">

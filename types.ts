@@ -66,6 +66,8 @@ export interface SettingsContextType {
   addCustomAsset: (type: keyof CustomImageAssets, url: string) => void;
   deleteCustomAsset: (type: keyof CustomImageAssets, url: string) => void;
   colors: string[];
+  unreadCounts: Record<string, number>;
+  clearUnreadCount: (redirectId: string) => void;
 }
 
 // For Notification System
