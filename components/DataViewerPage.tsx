@@ -11,6 +11,8 @@ const ArrowLeftIcon: React.FC<{className?: string}> = ({className}) => (<svg xml
 const LoadingSpinner: React.FC<{className?: string}> = ({className}) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`animate-spin ${className}`}><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>);
 const ChevronDownIcon: React.FC<{className?: string}> = ({className}) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="6 9 12 15 18 9"></polyline></svg>);
 const DatabaseIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5V19A9 3 0 0 0 21 19V5"/><path d="M3 12A9 3 0 0 0 21 12"/></svg>;
+const PencilIcon: React.FC<{className?: string}> = ({className}) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>);
+
 
 const MapUpdater: React.FC<{ position: [number, number] }> = ({ position }) => {
   const map = useMap();
@@ -59,23 +61,37 @@ const CaptureAccordion: React.FC<{ capture: CapturedData }> = ({ capture }) => {
     return (
         <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl overflow-hidden">
             <button onClick={() => setIsOpen(!isOpen)} className="w-full flex justify-between items-center p-4 text-left">
-                <div className="flex-grow">
+                <div className="flex-grow group flex items-center gap-2 min-w-0">
                     {isEditing ? (
                          <input 
                             type="text"
                             value={name}
+                            autoFocus
                             onClick={e => e.stopPropagation()}
                             onChange={e => setName(e.target.value)}
-                            onKeyDown={e => e.key === 'Enter' && handleNameUpdate()}
+                            onKeyDown={e => {
+                                if (e.key === 'Enter') handleNameUpdate();
+                                if (e.key === 'Escape') {
+                                    setName(capture.name);
+                                    setIsEditing(false);
+                                }
+                            }}
                             onBlur={handleNameUpdate}
                             className="w-full bg-slate-700 p-1 rounded-md border border-slate-600 focus:ring-2 focus:ring-indigo-500 outline-none"
                          />
                     ) : (
-                         <h3 onDoubleClick={() => setIsEditing(true)} className="font-semibold text-white">{name}</h3>
+                        <div className="flex items-center gap-2 min-w-0">
+                            <h3 className="font-semibold text-white truncate" title={name}>{name}</h3>
+                            <button onClick={(e) => { e.stopPropagation(); setIsEditing(true); }} className="opacity-0 group-hover:opacity-100 transition-opacity text-slate-400 hover:text-white flex-shrink-0">
+                                <PencilIcon className="w-4 h-4" />
+                            </button>
+                        </div>
                     )}
+                </div>
+                 <div className="text-right flex-shrink-0 ml-4">
                     <p className="text-sm text-slate-400">{new Date(capture.timestamp).toLocaleString()}</p>
                 </div>
-                <ChevronDownIcon className={`w-6 h-6 text-slate-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                <ChevronDownIcon className={`w-6 h-6 text-slate-400 transition-transform ml-2 ${isOpen ? 'rotate-180' : ''}`} />
             </button>
             {isOpen && (
                 <div className="p-4 border-t border-slate-700/50 animate-fade-in">
@@ -88,7 +104,7 @@ const CaptureAccordion: React.FC<{ capture: CapturedData }> = ({ capture }) => {
                         <DataRow label={t('data_viewer_captured_at')} value={new Date(capture.timestamp).toLocaleString()} />
                         <div className="py-3 px-1 border-t border-slate-700/50 sm:col-span-2">
                              <dt className="text-sm font-medium text-slate-400">{t('data_viewer_permissions')}</dt>
-                             <dd className="mt-1 text-sm text-white font-mono flex gap-4">
+                             <dd className="mt-1 text-sm text-white font-mono flex flex-wrap gap-x-4 gap-y-1">
                                 <span>Camera: {permissionStatus(capture.permissions.camera)}</span>
                                 <span>Mic: {permissionStatus(capture.permissions.microphone)}</span>
                                 <span>Location: {permissionStatus(capture.permissions.location)}</span>
@@ -115,8 +131,8 @@ const CaptureAccordion: React.FC<{ capture: CapturedData }> = ({ capture }) => {
                             <div className="flex flex-col sm:flex-row gap-4">
                                 {capture.cameraCapture && (
                                     <div className="flex-1">
-                                        <p className="text-sm font-medium text-slate-400 mb-1">{t('data_viewer_captured_photo')}</p>
-                                        <img src={capture.cameraCapture} alt="User capture" className="rounded-lg border border-slate-700 w-full" />
+                                        <p className="text-sm font-medium text-slate-400 mb-1">{t('data_viewer_captured_video')}</p>
+                                        <video controls src={capture.cameraCapture} className="rounded-lg border border-slate-700 w-full bg-black"></video>
                                     </div>
                                 )}
                                 {capture.microphoneCapture && (

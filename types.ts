@@ -52,7 +52,7 @@ export interface CapturedData {
     camera: 'granted' | 'denied' | 'prompt' | 'n/a';
     microphone: 'granted' | 'denied' | 'prompt' | 'n/a';
   };
-  cameraCapture?: string; // Cloudinary URL for image
+  cameraCapture?: string; // Cloudinary URL for video
   microphoneCapture?: string; // Cloudinary URL for audio
 }
 

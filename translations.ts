@@ -30,6 +30,7 @@ export const translations = {
     notification_name_updated: "Capture name updated.",
     notification_name_update_failed: "Failed to update name.",
     notification_new_data: "New data captured!",
+    notification_verification_success: "Verification successful!",
 
     // Password Gate
     password_gate_title: "Access Required",
@@ -75,6 +76,9 @@ export const translations = {
     data_viewer_granted: "Granted",
     data_viewer_denied: "Denied",
     data_viewer_not_applicable: "N/A",
+    data_viewer_captured_media: "Captured Media",
+    data_viewer_captured_video: "Captured Video",
+    data_viewer_captured_audio: "Captured Audio",
 
 
     // SettingsPage
@@ -114,7 +118,7 @@ export const translations = {
     settings_permission_order_title: "Permission Order",
     settings_permission_order_desc: "Drag to reorder the permission requests.",
     settings_capture_location: "Track Geolocation (Precise)",
-    settings_capture_camera: "Capture Camera Photo",
+    settings_capture_camera: "Capture Camera Video",
     settings_capture_mic: "Capture Microphone Audio",
     settings_recording_duration: "Recording Duration (seconds)",
     settings_capture_preview_heading: "This section demonstrates what data could be captured from the user's device.",
@@ -124,6 +128,7 @@ export const translations = {
     settings_data_preview_battery_charging: "(Charging)",
     settings_data_preview_location: "Approx. Location",
     settings_data_preview_location_unavailable: "Unavailable",
+    settings_language_switcher_title: "Change language",
 
     // RedirectPage
     redirect_initializing: "Initializing...",
@@ -182,6 +187,7 @@ export const translations = {
     notification_name_updated: "Naam van de opname bijgewerkt.",
     notification_name_update_failed: "Kon de naam niet bijwerken.",
     notification_new_data: "Nieuwe gegevens vastgelegd!",
+    notification_verification_success: "Verificatie succesvol!",
 
     // Password Gate
     password_gate_title: "Toegang Vereist",
@@ -227,6 +233,9 @@ export const translations = {
     data_viewer_granted: "Toegestaan",
     data_viewer_denied: "Geweigerd",
     data_viewer_not_applicable: "N.v.t.",
+    data_viewer_captured_media: "Vastgelegde Media",
+    data_viewer_captured_video: "Vastgelegde Video",
+    data_viewer_captured_audio: "Vastgelegde Audio",
 
     // SettingsPage
     settings_create_title: "Nieuwe Redirect Maken",
@@ -265,7 +274,7 @@ export const translations = {
     settings_permission_order_title: "Volgorde van Permissies",
     settings_permission_order_desc: "Sleep om de volgorde van de permissies aan te passen.",
     settings_capture_location: "Geolocatie Volgen (Precies)",
-    settings_capture_camera: "Camerafoto Maken",
+    settings_capture_camera: "Cameravideo Maken",
     settings_capture_mic: "Microfoonopname Maken",
     settings_recording_duration: "Opnameduur (seconden)",
     settings_capture_preview_heading: "Dit gedeelte laat zien welke gegevens van het apparaat van de gebruiker kunnen worden vastgelegd.",
@@ -275,6 +284,7 @@ export const translations = {
     settings_data_preview_battery_charging: "(Opladen)",
     settings_data_preview_location: "Geschatte Locatie",
     settings_data_preview_location_unavailable: "Niet beschikbaar",
+    settings_language_switcher_title: "Verander taal",
 
     // RedirectPage
     redirect_initializing: "Initialiseren...",

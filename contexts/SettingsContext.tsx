@@ -12,10 +12,10 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [loading, setLoading] = React.useState(true);
   const addNotification = useNotification();
   
-  // For Real-time notifications
-  const [totalCaptureCounts, setTotalCaptureCounts] = React.useState<Record<string, number>>({});
   const [unreadCounts, setUnreadCounts] = React.useState<Record<string, number>>({});
   const audioCtxRef = React.useRef<AudioContext | null>(null);
+  const isInitialLoadRef = React.useRef(true);
+
 
   const playNotificationSound = React.useCallback(() => {
     if (!audioCtxRef.current) {
@@ -37,7 +37,6 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }, []);
 
   React.useEffect(() => {
-    // --- Data Fetching ---
     const fetchData = async () => {
       try {
         const configsSnapshot = await getDocs(collection(db, "redirects"));
@@ -58,48 +57,70 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     };
     fetchData();
 
-    // --- Real-time Capture Listener ---
     const q = query(collection(db, "captures"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
+        // Prevent notification spam on initial load and navigation
+        if (isInitialLoadRef.current) {
+            isInitialLoadRef.current = false;
+            return;
+        }
+
+        // Only react to genuinely new documents
+        snapshot.docChanges().forEach((change) => {
+            if (change.type === "added") {
+                 // Double-check we are not on the public view page
+                if (window.location.hash.startsWith('#/view/')) return;
+                
+                playNotificationSound();
+                addNotification({ type: 'info', message: 'notification_new_data' });
+                
+                const capture = change.doc.data() as CapturedData;
+                setUnreadCounts(prev => ({
+                    ...prev,
+                    [capture.redirectId]: (prev[capture.redirectId] || 0) + 1,
+                }));
+            }
+        });
+    });
+
+    return () => unsubscribe();
+  }, [addNotification, playNotificationSound]);
+
+  React.useEffect(() => {
+    // Initial calculation of unread counts
+    const calculateInitialUnread = async () => {
+        const capturesSnapshot = await getDocs(collection(db, "captures"));
         const newTotalCounts: Record<string, number> = {};
-        snapshot.forEach((doc) => {
+        capturesSnapshot.forEach((doc) => {
             const capture = doc.data() as CapturedData;
             newTotalCounts[capture.redirectId] = (newTotalCounts[capture.redirectId] || 0) + 1;
         });
-
-        // Check if a notification should be triggered
-        const previousTotal = Object.values(totalCaptureCounts).reduce((a, b) => a + b, 0);
-        const newTotal = Object.values(newTotalCounts).reduce((a, b) => a + b, 0);
-        if (newTotal > previousTotal && previousTotal > 0) {
-            playNotificationSound();
-            addNotification({ type: 'info', message: 'notification_new_data' });
-        }
         
-        setTotalCaptureCounts(newTotalCounts);
-        
-        // Update unread counts based on localStorage
         const seenCountsStr = localStorage.getItem('seenCaptures');
         const seenCounts: Record<string, number> = seenCountsStr ? JSON.parse(seenCountsStr) : {};
         const newUnreadCounts: Record<string, number> = {};
+        
         Object.keys(newTotalCounts).forEach(redirectId => {
             newUnreadCounts[redirectId] = newTotalCounts[redirectId] - (seenCounts[redirectId] || 0);
         });
         setUnreadCounts(newUnreadCounts);
-    });
+    };
+    calculateInitialUnread();
+  }, []);
 
-    return () => unsubscribe();
-  }, [addNotification, playNotificationSound, totalCaptureCounts]); // totalCaptureCounts is a proxy to detect changes
 
-
-  const clearUnreadCount = React.useCallback((redirectId: string) => {
+  const clearUnreadCount = React.useCallback(async (redirectId: string) => {
+    const capturesSnapshot = await getDocs(query(collection(db, "captures"), where("redirectId", "==", redirectId)));
+    const totalCount = capturesSnapshot.size;
+    
     const seenCountsStr = localStorage.getItem('seenCaptures');
     const seenCounts: Record<string, number> = seenCountsStr ? JSON.parse(seenCountsStr) : {};
     
-    seenCounts[redirectId] = totalCaptureCounts[redirectId] || 0;
+    seenCounts[redirectId] = totalCount;
     localStorage.setItem('seenCaptures', JSON.stringify(seenCounts));
 
     setUnreadCounts(prev => ({...prev, [redirectId]: 0 }));
-  }, [totalCaptureCounts]);
+  }, []);
 
 
   const addConfig = async (configData: Omit<Settings, 'id'>): Promise<Settings | null> => {
@@ -216,6 +237,11 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const [notifications, setNotifications] = React.useState<Notification[]>([]);
 
   const addNotification = React.useCallback((notification: Omit<Notification, 'id'>) => {
+    // Prevent notifications on public-facing redirect page
+    if (window.location.hash.startsWith('#/view/')) {
+        return;
+    }
+
     const newNotification = { ...notification, id: Date.now() };
     setNotifications(prev => [newNotification, ...prev]);
     setTimeout(() => {

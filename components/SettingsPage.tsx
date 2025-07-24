@@ -217,7 +217,7 @@ const SettingsPage: React.FC = () => {
     const navigate = useNavigate();
     const { getConfig, addConfig, updateConfig, customImageAssets, addCustomAsset, deleteCustomAsset } = useSettings();
     const addNotification = useNotification();
-    const { t } = useLanguage();
+    const { t, lang, setLang } = useLanguage();
     
     const [settings, setSettings] = React.useState<Omit<Settings, 'id'> | Settings>(() => {
         if (id) {
@@ -399,10 +399,16 @@ const SettingsPage: React.FC = () => {
                          <p className="text-sm text-slate-400">{settings.name || t('settings_untitled')}</p>
                      </div>
                 </div>
-                <button onClick={handleSave} disabled={isSaving} className="px-5 py-2.5 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-500 transition-colors disabled:opacity-50 disabled:cursor-wait flex items-center gap-2">
-                    {isSaving ? <LoadingSpinner className="w-5 h-5"/> : null}
-                    {isSaving ? t('saving') : t('save')}
-                </button>
+                <div className="flex items-center gap-4">
+                  <div title={t('settings_language_switcher_title')} className="flex items-center bg-slate-700/50 rounded-lg">
+                    <button onClick={() => setLang('en')} className={`px-3 py-2 text-sm font-bold rounded-l-lg transition-colors ${lang === 'en' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-700'}`}>EN</button>
+                    <button onClick={() => setLang('nl')} className={`px-3 py-2 text-sm font-bold rounded-r-lg transition-colors ${lang === 'nl' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-700'}`}>NL</button>
+                  </div>
+                  <button onClick={handleSave} disabled={isSaving} className="px-5 py-2.5 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-500 transition-colors disabled:opacity-50 disabled:cursor-wait flex items-center gap-2">
+                      {isSaving ? <LoadingSpinner className="w-5 h-5"/> : null}
+                      {isSaving ? t('saving') : t('save')}
+                  </button>
+                </div>
             </header>
             
             <div className="flex-grow flex w-full overflow-hidden">
