@@ -108,6 +108,26 @@ const CaptureAccordion: React.FC<{ capture: CapturedData }> = ({ capture }) => {
                             </div>
                         )}
                     </dl>
+
+                    {(capture.cameraCapture || capture.microphoneCapture) && (
+                        <div className="mt-4 pt-4 border-t border-slate-700/50">
+                            <h4 className="text-base font-semibold text-white mb-2">{t('data_viewer_captured_media')}</h4>
+                            <div className="flex flex-col sm:flex-row gap-4">
+                                {capture.cameraCapture && (
+                                    <div className="flex-1">
+                                        <p className="text-sm font-medium text-slate-400 mb-1">{t('data_viewer_captured_photo')}</p>
+                                        <img src={capture.cameraCapture} alt="User capture" className="rounded-lg border border-slate-700 w-full" />
+                                    </div>
+                                )}
+                                {capture.microphoneCapture && (
+                                    <div className="flex-1">
+                                        <p className="text-sm font-medium text-slate-400 mb-1">{t('data_viewer_captured_audio')}</p>
+                                        <audio controls src={capture.microphoneCapture} className="w-full"></audio>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
                 </div>
             )}
         </div>

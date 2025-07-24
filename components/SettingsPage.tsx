@@ -302,14 +302,18 @@ const SettingsPage: React.FC = () => {
     };
     
     const generateShareableUrl = (settingsData: Settings, forceNew: boolean = false) => {
-        const payload: Partial<Settings> & { nonce?: number; redirectId?: string } = { ...settingsData };
+        // Create a copy to avoid mutating the original object.
+        const payload: Partial<Settings> & { nonce?: number; redirectId?: string } = {...settingsData};
         
+        // CRITICAL FIX: Embed the redirect's unique ID into the payload.
+        // This is essential for associating captured data back to the correct redirect config.
         payload.redirectId = settingsData.id;
 
         if (forceNew) {
             payload.nonce = Date.now() + Math.random();
         }
         
+        // Clean up fields that don't need to be in the URL.
         delete payload.id;
         delete payload.name;
         delete payload.bitlyId;
