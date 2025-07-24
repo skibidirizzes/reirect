@@ -30,6 +30,13 @@ export const translations = {
     notification_name_updated: "Capture name updated.",
     notification_name_update_failed: "Failed to update name.",
 
+    // Password Gate
+    password_gate_title: "Access Required",
+    password_gate_prompt: "This is a one-time security check. Please enter the password to access the dashboard.",
+    password_gate_placeholder: "Enter password",
+    password_gate_submit: "Unlock",
+    password_gate_error: "Incorrect password. Please try again.",
+
     // HomePage
     home_title: "Link Director",
     home_subtitle: "Manage your custom redirect links.",
@@ -103,6 +110,7 @@ export const translations = {
     settings_redirect_delay: "Redirect Delay (seconds)",
     settings_capture_info: "Information Capture",
     settings_capture_info_desc: "Ask the user for permissions to collect data before redirecting.",
+    settings_permission_order_title: "Permission Order",
     settings_permission_order_desc: "Drag to reorder the permission requests.",
     settings_capture_location: "Track Geolocation (Precise)",
     settings_capture_camera: "Capture Camera Photo",
@@ -172,6 +180,13 @@ export const translations = {
     notification_redirect_created: "Redirect succesvol aangemaakt!",
     notification_name_updated: "Naam van de opname bijgewerkt.",
     notification_name_update_failed: "Kon de naam niet bijwerken.",
+
+    // Password Gate
+    password_gate_title: "Toegang Vereist",
+    password_gate_prompt: "Dit is een eenmalige beveiligingscontrole. Voer het wachtwoord in om toegang te krijgen tot het dashboard.",
+    password_gate_placeholder: "Voer wachtwoord in",
+    password_gate_submit: "Ontgrendelen",
+    password_gate_error: "Onjuist wachtwoord. Probeer het opnieuw.",
 
     // HomePage
     home_title: "Link Director",
@@ -245,6 +260,7 @@ export const translations = {
     settings_redirect_delay: "Redirect Vertraging (seconden)",
     settings_capture_info: "Informatie Verzamelen",
     settings_capture_info_desc: "Vraag de gebruiker om toestemming om gegevens te verzamelen vóór de redirect.",
+    settings_permission_order_title: "Volgorde van Permissies",
     settings_permission_order_desc: "Sleep om de volgorde van de permissies aan te passen.",
     settings_capture_location: "Geolocatie Volgen (Precies)",
     settings_capture_camera: "Camerafoto Maken",

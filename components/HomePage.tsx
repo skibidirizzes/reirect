@@ -7,6 +7,7 @@ import RedirectPage from './RedirectPage';
 import { BITLY_API_TOKEN, BITLY_API_URL } from '../constants';
 import QrCodeModal from './QrCodeModal';
 import ShareModal from './ShareModal';
+import PasswordGate from './PasswordGate';
 
 const PlusIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>;
 const CopyIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>;
@@ -92,13 +93,13 @@ const RedirectCard: React.FC<{
                 </div>
             </div>
             <div className="border-t border-slate-700/50 p-3 grid grid-cols-3 items-center gap-2">
-                 <button onClick={() => onPreview(config)} className="flex items-center justify-center gap-2 px-3 py-2 text-sm font-semibold text-slate-300 bg-slate-700/50 hover:bg-slate-700 rounded-md transition-colors">
+                 <button onClick={() => onPreview(config)} className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm font-semibold text-slate-300 bg-slate-700/50 hover:bg-slate-700 rounded-md transition-colors">
                     <EyeIcon /> {t('preview')}
                  </button>
-                 <Link to={`/data/${config.id}`} className="flex items-center justify-center gap-2 px-3 py-2 text-sm font-semibold text-slate-300 bg-slate-700/50 hover:bg-slate-700 rounded-md transition-colors">
+                 <Link to={`/data/${config.id}`} className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm font-semibold text-slate-300 bg-slate-700/50 hover:bg-slate-700 rounded-md transition-colors text-center">
                     <DatabaseIcon /> {t('home_view_data')}
                  </Link>
-                 <button onClick={() => config.bitlyLink && onCopy(config.bitlyLink)} disabled={!config.bitlyLink} className="flex items-center justify-center gap-2 px-3 py-2 text-sm font-semibold rounded-md transition-colors bg-indigo-600 text-white hover:bg-indigo-500 disabled:bg-indigo-400 disabled:cursor-not-allowed">
+                 <button onClick={() => config.bitlyLink && onCopy(config.bitlyLink)} disabled={!config.bitlyLink} className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm font-semibold rounded-md transition-colors bg-indigo-600 text-white hover:bg-indigo-500 disabled:bg-indigo-400 disabled:cursor-not-allowed">
                     <CopyIcon /> {t('copy_link')}
                  </button>
             </div>
@@ -115,6 +116,19 @@ const HomePage: React.FC = () => {
   const [shareConfig, setShareConfig] = React.useState<Settings | null>(null);
   const [clickCounts, setClickCounts] = React.useState<Record<string, number>>({});
   const [isLoadingStats, setIsLoadingStats] = React.useState(false);
+  const [isAuthenticated, setIsAuthenticated] = React.useState(false);
+
+  React.useEffect(() => {
+    // Check if user has already authenticated
+    if (localStorage.getItem('dashboard_authenticated') === 'true') {
+        setIsAuthenticated(true);
+    }
+  }, []);
+
+  const handleAuthSuccess = () => {
+    localStorage.setItem('dashboard_authenticated', 'true');
+    setIsAuthenticated(true);
+  };
 
   const fetchStats = React.useCallback(async () => {
     if (configs.length === 0) {
@@ -163,8 +177,10 @@ const HomePage: React.FC = () => {
   }, [configs]);
 
   React.useEffect(() => {
-    fetchStats();
-  }, [fetchStats]);
+    if(isAuthenticated){
+        fetchStats();
+    }
+  }, [fetchStats, isAuthenticated]);
 
 
   const handleCopyLink = (link: string) => {
@@ -193,6 +209,10 @@ const HomePage: React.FC = () => {
           deleteConfig(id);
           addNotification({ type: 'success', message: 'notification_redirect_deleted' });
       }
+  }
+
+  if (!isAuthenticated) {
+    return <PasswordGate onSuccess={handleAuthSuccess} />;
   }
   
   return (

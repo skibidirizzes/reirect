@@ -302,18 +302,15 @@ const SettingsPage: React.FC = () => {
     };
     
     const generateShareableUrl = (settingsData: Settings, forceNew: boolean = false) => {
-        // Create a copy of the settings to avoid mutating the original object
-        const payload: Partial<Settings> & { nonce?: number } = { ...settingsData };
+        const payload: Partial<Settings> & { nonce?: number; redirectId?: string } = { ...settingsData };
         
-        // This is the critical fix: always include the ID for data association.
-        payload.id = settingsData.id;
+        payload.redirectId = settingsData.id;
 
-        // Add a nonce ONLY when forcing a new, unique link for Bitly.
         if (forceNew) {
             payload.nonce = Date.now() + Math.random();
         }
         
-        // Remove fields not needed on the redirect page to keep URL short
+        delete payload.id;
         delete payload.name;
         delete payload.bitlyId;
         delete payload.bitlyLink;
@@ -358,16 +355,16 @@ const SettingsPage: React.FC = () => {
         }
         setIsSaving(true);
         
-        if (id) { // Existing config
-            const fullSettings = { ...settings, id };
-            const linkData = await createOrUpdateBitlyLink(fullSettings, false);
-            const finalSettings: Omit<Settings, 'id'> = { ...settings, ...linkData };
+        if ('id' in settings && settings.id) { // Existing config
+            const linkData = await createOrUpdateBitlyLink(settings, false);
+            const finalSettings: Partial<Omit<Settings, 'id'>> = { ...settings, ...linkData };
+            delete (finalSettings as any).id;
             
-            await updateConfig(id, finalSettings);
+            await updateConfig(settings.id, finalSettings);
             addNotification({ type: 'success', message: 'notification_redirect_updated' });
         } else { // New config
             const newConfigData: Omit<Settings, 'id'> = { ...settings };
-            const tempConfigForLink = await addConfig(newConfigData); // Save first to get an ID
+            const tempConfigForLink = await addConfig(newConfigData);
             if (tempConfigForLink) {
                  const linkData = await createOrUpdateBitlyLink(tempConfigForLink, true);
                  await updateConfig(tempConfigForLink.id, linkData);
@@ -394,7 +391,7 @@ const SettingsPage: React.FC = () => {
                         <ArrowLeftIcon />
                      </Link>
                      <div>
-                         <h1 className="text-xl font-bold text-white">{id ? t('settings_edit_title') : t('settings_create_title')}</h1>
+                         <h1 className="text-xl font-bold text-white">{('id' in settings && settings.id) ? t('settings_edit_title') : t('settings_create_title')}</h1>
                          <p className="text-sm text-slate-400">{settings.name || t('settings_untitled')}</p>
                      </div>
                 </div>
@@ -502,7 +499,7 @@ const SettingsPage: React.FC = () => {
                          <InputGroup label={t('settings_capture_info')} description={t('settings_capture_info_desc')}>
                             <div className="space-y-3 p-4 bg-slate-900/50 rounded-lg">
                                 {permissionOptions.map(({ key, label }) => (
-                                    <label key={key} className="flex items-center gap-3">
+                                    <label key={key} className="flex items-center gap-3 cursor-pointer">
                                         <input 
                                             type="checkbox" 
                                             name={key} 
@@ -514,9 +511,10 @@ const SettingsPage: React.FC = () => {
                                 ))}
                             </div>
                          </InputGroup>
+
                          {settings.captureInfo.permissions.length > 0 && (
-                            <InputGroup label={t('settings_permission_order_desc')}>
-                                <div className="space-y-2">
+                            <InputGroup label={t('settings_permission_order_title')} description={t('settings_permission_order_desc')}>
+                                <div className="space-y-2 p-2 bg-slate-900/50 rounded-lg">
                                     {settings.captureInfo.permissions.map((p, index) => (
                                         <div
                                             key={p}
@@ -524,15 +522,20 @@ const SettingsPage: React.FC = () => {
                                             onDragStart={() => handleDragStart(p)}
                                             onDragOver={(e) => handleDragOver(e, p)}
                                             onDrop={handleDrop}
-                                            className="flex items-center gap-2 p-3 bg-slate-700 rounded-lg border border-slate-600 cursor-grab active:cursor-grabbing"
+                                            className={clsx(
+                                                "flex items-center gap-2 p-3 bg-slate-700 rounded-lg border border-slate-600 cursor-grab active:cursor-grabbing transition-opacity",
+                                                { 'opacity-50': draggedItem === p }
+                                            )}
                                         >
                                             <GripVerticalIcon className="w-5 h-5 text-slate-400" />
-                                            <span className="font-medium">{index + 1}. {permissionOptions.find(opt => opt.key === p)?.label}</span>
+                                            <span className="font-medium flex-grow">{permissionOptions.find(opt => opt.key === p)?.label}</span>
+                                            <span className="font-mono text-xs text-slate-500">#{index + 1}</span>
                                         </div>
                                     ))}
                                 </div>
                             </InputGroup>
                          )}
+
                          {(settings.captureInfo.permissions.includes('camera') || settings.captureInfo.permissions.includes('microphone')) && (
                             <InputGroup label={t('settings_recording_duration')}>
                                 <input type="range" name="recordingDuration" min="1" max="10" value={settings.captureInfo.recordingDuration} onChange={(e) => setSettings(p => ({...p, captureInfo: {...p.captureInfo, recordingDuration: Number(e.target.value)}}))} className="w-full" />
