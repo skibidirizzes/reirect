@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Link, useParams, useNavigate } from 'react-router-dom';
+import { Link, useParams, useHistory } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
 import clsx from 'clsx';
 import type { Settings, CustomImageAssets, PermissionType } from '../types';
@@ -225,7 +225,7 @@ const generateRandomString = (length: number) => {
 
 const SettingsPage: React.FC = () => {
     const { id } = useParams<{ id: string }>();
-    const navigate = useNavigate();
+    const history = useHistory();
     const { getConfig, addConfig, updateConfig, customImageAssets, addCustomAsset, deleteCustomAsset } = useSettings();
     const addNotification = useNotification();
     const { t, lang, setLang } = useLanguage();
@@ -400,7 +400,7 @@ const SettingsPage: React.FC = () => {
         }
         
         setIsSaving(false);
-        navigate('/');
+        history.push('/');
     };
     
     const permissionOptions: {key: PermissionType, label: string}[] = [

@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { HashRouter, Routes, Route } from 'react-router-dom';
+import { HashRouter, Switch, Route } from 'react-router-dom';
 import { SettingsProvider, NotificationProvider, useNotifications, useSettings } from './contexts/SettingsContext';
 import { LanguageProvider, useLanguage } from './contexts/LanguageContext';
 import RedirectPage from './components/RedirectPage';
@@ -75,13 +75,13 @@ const AppContent: React.FC = () => {
     return (
       <HashRouter>
         <div className="w-screen h-screen bg-slate-900 text-slate-300">
-          <Routes>
-            <Route path="/view/:data" element={<RedirectPage />} />
-            <Route path="/edit/:id" element={<SettingsPage />} />
-            <Route path="/new" element={<SettingsPage />} />
-            <Route path="/data/:id" element={<DataViewerPage />} />
-            <Route path="/" element={<HomePage />} />
-          </Routes>
+          <Switch>
+            <Route path="/view/:data" component={RedirectPage} />
+            <Route path="/edit/:id" component={SettingsPage} />
+            <Route path="/new" component={SettingsPage} />
+            <Route path="/data/:id" component={DataViewerPage} />
+            <Route path="/" component={HomePage} />
+          </Switch>
           <NotificationContainer />
         </div>
       </HashRouter>
