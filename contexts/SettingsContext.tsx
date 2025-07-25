@@ -2,7 +2,8 @@ import * as React from 'react';
 import type { Settings, SettingsContextType, CustomImageAssets, Notification, NotificationType, NotificationContextValue, CapturedData } from '../types';
 import { PREDEFINED_COLORS } from '../constants';
 import { db } from '../firebase';
-import { collection, getDocs, doc, getDoc, setDoc, addDoc, updateDoc, deleteDoc, arrayUnion, arrayRemove, onSnapshot, query, orderBy, where } from 'firebase/firestore';
+import { collection, getDocs, doc, getDoc, setDoc, addDoc, updateDoc, deleteDoc, onSnapshot, query, where, arrayUnion, arrayRemove } from 'firebase/firestore';
+
 
 const SettingsContext = React.createContext<SettingsContextType | undefined>(undefined);
 
@@ -57,7 +58,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     };
     fetchData();
 
-    const q = query(collection(db, "captures"));
+    const q = collection(db, "captures");
     const unsubscribe = onSnapshot(q, (snapshot) => {
         // Prevent notification spam on initial load and navigation
         if (isInitialLoadRef.current) {
@@ -110,7 +111,8 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
 
   const clearUnreadCount = React.useCallback(async (redirectId: string) => {
-    const capturesSnapshot = await getDocs(query(collection(db, "captures"), where("redirectId", "==", redirectId)));
+    const q = query(collection(db, "captures"), where("redirectId", "==", redirectId));
+    const capturesSnapshot = await getDocs(q);
     const totalCount = capturesSnapshot.size;
     
     const seenCountsStr = localStorage.getItem('seenCaptures');

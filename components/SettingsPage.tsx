@@ -2,12 +2,15 @@ import * as React from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
 import clsx from 'clsx';
+import { GoogleGenAI } from '@google/genai';
 import type { Settings, CustomImageAssets, PermissionType } from '../types';
 import { useSettings, useNotification } from '../contexts/SettingsContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { NEW_REDIRECT_TEMPLATE, BITLY_API_TOKEN, BITLY_API_URL, CARD_STYLES, APP_BASE_URL } from '../constants';
 import RedirectPage from './RedirectPage';
 import { db } from '../firebase';
+import { collection, query, where, getDocs } from 'firebase/firestore';
+
 
 // --- Re-usable UI Components ---
 
@@ -199,6 +202,8 @@ const SettingsPage: React.FC = () => {
 
     const [settings, setSettings] = React.useState<Partial<Settings>>(NEW_REDIRECT_TEMPLATE);
     const [saving, setSaving] = React.useState(false);
+    const [isSuggesting, setIsSuggesting] = React.useState(false);
+
 
     React.useEffect(() => {
         if (!isNew && id) {
@@ -229,6 +234,33 @@ const SettingsPage: React.FC = () => {
             }
         }));
     };
+
+    const handleSuggestDisplayText = async () => {
+        if (!settings.redirectUrl) {
+            addNotification({ type: 'error', message: 'notification_suggestion_no_url' });
+            return;
+        }
+        
+        setIsSuggesting(true);
+        try {
+            const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
+            const prompt = `Based on this URL: "${settings.redirectUrl}", suggest a short, engaging display text for a redirect page. The text will be shown to users while they wait to be redirected. The tone should be slightly exciting or professional. Keep it under 60 characters. Return only the text.`;
+            
+            const response = await ai.models.generateContent({
+                model: 'gemini-2.5-flash',
+                contents: prompt,
+            });
+    
+            const suggestedText = response.text.trim().replace(/["']/g, ''); // Clean up quotes
+            handleInputChange('displayText', suggestedText);
+    
+        } catch (error) {
+            console.error("Error suggesting display text:", error);
+            addNotification({ type: 'error', message: 'notification_suggestion_failed' });
+        } finally {
+            setIsSuggesting(false);
+        }
+    };
     
     const handleSave = async () => {
         if (!settings.name || !settings.redirectUrl) {
@@ -241,8 +273,8 @@ const SettingsPage: React.FC = () => {
         
         // Check for slug uniqueness if it's new or has changed
         if (isNew || urlIdentifier !== getConfig(id!)?.urlIdentifier) {
-            const q = db.collection("redirects").where("urlIdentifier", "==", urlIdentifier);
-            const querySnapshot = await q.get();
+            const q = query(collection(db, "redirects"), where("urlIdentifier", "==", urlIdentifier));
+            const querySnapshot = await getDocs(q);
             if (!querySnapshot.empty) {
                 addNotification({ type: 'error', message: 'settings_url_identifier_error' });
                 setSaving(false);
@@ -425,12 +457,26 @@ const SettingsPage: React.FC = () => {
                         <section className="space-y-8">
                              <h2 className="text-2xl font-bold text-white border-b border-slate-700 pb-3">{t('settings_section_appearance')}</h2>
                             <InputGroup label={t('settings_display_text')} description={t('settings_display_text_desc')}>
-                                <input
-                                    type="text"
-                                    value={settings.displayText || ''}
-                                    onChange={e => handleInputChange('displayText', e.target.value)}
-                                    className="w-full bg-slate-700/50 border border-slate-600 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition"
-                                />
+                                <div className="flex items-center gap-2">
+                                    <input
+                                        type="text"
+                                        value={settings.displayText || ''}
+                                        onChange={e => handleInputChange('displayText', e.target.value)}
+                                        className="flex-grow bg-slate-700/50 border border-slate-600 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={handleSuggestDisplayText}
+                                        disabled={!settings.redirectUrl || isSuggesting || saving}
+                                        className="flex-shrink-0 flex items-center justify-center gap-2 w-32 px-4 py-2 bg-slate-600 text-white font-semibold rounded-lg hover:bg-slate-500 transition-colors disabled:bg-slate-500/50 disabled:cursor-not-allowed"
+                                    >
+                                        {isSuggesting ? (
+                                            <LoadingSpinner className="w-5 h-5" />
+                                        ) : (
+                                            <>✨ {t('settings_suggest_text')}</>
+                                        )}
+                                    </button>
+                                </div>
                             </InputGroup>
                             <InputGroup label={t('settings_card_style')}>
                                 <select
