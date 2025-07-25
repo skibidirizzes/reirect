@@ -75,12 +75,16 @@ const SettingsPage: React.FC = () => {
             const newPermissions = currentPermissions.includes(permission)
                 ? currentPermissions.filter(p => p !== permission)
                 : [...currentPermissions, permission];
-            return { 
-                ...prev, 
-                captureInfo: { ...prev.captureInfo, permissions: newPermissions }
+            const currentCaptureInfo = prev.captureInfo || NEW_REDIRECT_TEMPLATE.captureInfo;
+            return {
+                ...prev,
+                captureInfo: {
+                    ...currentCaptureInfo,
+                    permissions: newPermissions,
+                }
             };
         });
-    }
+    };
 
     const handleSave = async () => {
         if (!settings.name || !settings.redirectUrl) {
@@ -180,7 +184,19 @@ const SettingsPage: React.FC = () => {
                                     name="recordingDuration" 
                                     type="number" 
                                     value={settings.captureInfo?.recordingDuration || 5} 
-                                    onChange={(e) => setSettings(p => ({...p, captureInfo: {...p.captureInfo, recordingDuration: parseInt(e.target.value, 10) || 0}}))} 
+                                    onChange={(e) => {
+                                        const value = parseInt(e.target.value, 10) || 0;
+                                        setSettings(p => {
+                                            const currentCaptureInfo = p.captureInfo || NEW_REDIRECT_TEMPLATE.captureInfo;
+                                            return {
+                                                ...p,
+                                                captureInfo: {
+                                                    ...currentCaptureInfo,
+                                                    recordingDuration: value
+                                                }
+                                            };
+                                        });
+                                    }}
                                     min="1" 
                                 />
                             </InputGroup>
