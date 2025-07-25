@@ -31,8 +31,6 @@ export const translations = {
     notification_name_update_failed: "Failed to update name.",
     notification_new_data: "New data captured!",
     notification_verification_success: "Verification successful!",
-    notification_suggestion_failed: "AI suggestion failed. Please try again.",
-    notification_suggestion_no_url: "Please enter a Redirect URL to get a suggestion.",
     settings_url_identifier_error: "This slug is already in use. Please choose another.",
 
     // Password Gate
@@ -108,7 +106,6 @@ export const translations = {
     settings_section_appearance: "Appearance",
     settings_display_text: "Display Text",
     settings_display_text_desc: "The main text shown on the redirect page.",
-    settings_suggest_text: "Suggest",
     settings_card_style: "Card Style",
     settings_bg_color: "Background Color",
     settings_text_color: "Text Color",
@@ -199,8 +196,6 @@ export const translations = {
     notification_name_update_failed: "Kon de naam niet bijwerken.",
     notification_new_data: "Nieuwe gegevens vastgelegd!",
     notification_verification_success: "Verificatie succesvol!",
-    notification_suggestion_failed: "AI-suggestie mislukt. Probeer het opnieuw.",
-    notification_suggestion_no_url: "Voer een redirect-URL in om een suggestie te krijgen.",
     settings_url_identifier_error: "Deze slug is al in gebruik. Kies een andere.",
 
     // Password Gate
@@ -275,7 +270,6 @@ export const translations = {
     settings_section_appearance: "Uiterlijk",
     settings_display_text: "Weergavetekst",
     settings_display_text_desc: "De hoofdtekst die op de redirect-pagina wordt getoond.",
-    settings_suggest_text: "Voorstellen",
     settings_card_style: "Kaartstijl",
     settings_bg_color: "Achtergrondkleur",
     settings_text_color: "Tekstkleur",
