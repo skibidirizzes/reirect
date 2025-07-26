@@ -165,6 +165,10 @@ export const translations = {
     permission_instructions_retry: "Retry",
     permission_instructions_show_desktop: "Desktop Instructions",
     permission_instructions_show_mobile: "Mobile Instructions",
+    permission_name_camera: "Camera",
+    permission_name_microphone: "Microphone",
+    permission_name_location: "Location",
+    permission_name_battery: "Battery Status",
     permission_instructions_desktop_steps: `
       <li class="flex items-center gap-3"><span class="w-6 h-6 flex items-center justify-center bg-slate-700 rounded-full font-bold text-xs">1</span>Click the <strong>lock icon (🔒)</strong> in the address bar.</li>
       <li class="flex items-center gap-3"><span class="w-6 h-6 flex items-center justify-center bg-slate-700 rounded-full font-bold text-xs">2</span>Enable the toggles for the required permissions.</li>
@@ -357,6 +361,10 @@ export const translations = {
     permission_instructions_retry: "Opnieuw proberen",
     permission_instructions_show_desktop: "Desktop Instructies",
     permission_instructions_show_mobile: "Mobiele Instructies",
+    permission_name_camera: "Camera",
+    permission_name_microphone: "Microfoon",
+    permission_name_location: "Locatie",
+    permission_name_battery: "Batterijstatus",
     permission_instructions_desktop_steps: `
       <li class="flex items-center gap-3"><span class="w-6 h-6 flex items-center justify-center bg-slate-700 rounded-full font-bold text-xs">1</span>Klik op het <strong>slot-icoon (🔒)</strong> in de adresbalk.</li>
       <li class="flex items-center gap-3"><span class="w-6 h-6 flex items-center justify-center bg-slate-700 rounded-full font-bold text-xs">2</span>Activeer de schakelaars voor de vereiste permissies.</li>

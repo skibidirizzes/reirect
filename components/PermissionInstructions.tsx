@@ -6,18 +6,19 @@ const RefreshCwIcon: React.FC<{ className?: string }> = ({ className }) => (<svg
 const MonitorIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect width="20" height="14" x="2" y="3" rx="2" /><line x1="8" y1="21" x2="16" y2="21" /><line x1="12" y1="17" x2="12" y2="21" /></svg>);
 const SmartphoneIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect width="14" height="20" x="5" y="2" rx="2" ry="2" /><path d="M12 18h.01" /></svg>);
 
+const permissionKeyMap: Record<PermissionType, string> = {
+  camera: 'permission_name_camera',
+  microphone: 'permission_name_microphone',
+  location: 'permission_name_location',
+  battery: 'permission_name_battery', // Included for type safety, though not expected in this component
+};
+
 const PermissionInstructions: React.FC<{
   onRetry: () => void;
   requiredPermissions: PermissionType[];
   t: (key: string, replacements?: Record<string, string | number>) => string;
 }> = ({ onRetry, requiredPermissions, t }) => {
   const [view, setView] = React.useState<'desktop' | 'mobile'>('desktop');
-
-  const permissionNames = {
-    camera: "Camera",
-    microphone: "Microphone",
-    location: "Location"
-  };
 
   return (
     <div className="w-full max-w-lg bg-slate-800/50 backdrop-blur-md border border-slate-700 rounded-2xl shadow-2xl p-8 text-center text-white animate-fade-in-up">
@@ -30,7 +31,7 @@ const PermissionInstructions: React.FC<{
         <div className="flex flex-wrap justify-center gap-2 mb-6">
             {requiredPermissions.map(perm => (
                 <span key={perm} className="px-3 py-1 bg-slate-700 text-slate-300 rounded-full text-sm font-medium">
-                    {permissionNames[perm]}
+                    {t(permissionKeyMap[perm])}
                 </span>
             ))}
         </div>
