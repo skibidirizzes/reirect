@@ -318,7 +318,7 @@ const HomePage: React.FC = () => {
       
       {/* QR Code Modal */}
       {qrCodeConfig && (
-        <QrCodeModal config={qrCodeConfig} onClose={() => setQrCodeConfig(null)} />
+        <QrCodeModal config={qrCodeConfig} onClose={() => setQrCodeConfig(null)} t={t} />
       )}
 
       {/* Share Modal */}

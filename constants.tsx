@@ -11,7 +11,7 @@ export const APP_BASE_URL = 'https://stuur.vercel.app';
 // IMPORTANT: You must create an "unsigned upload preset" in your Cloudinary dashboard
 // with the exact name below for media uploads to work.
 export const CLOUDINARY_CLOUD_NAME = 'dnvkhmgj0';
-export const CLOUDINARY_UPLOAD_PRESET = 'redirecter_preset';
+export const CLOUDINARY_UPLOAD_PRESET = 'locstorage';
 export const CLOUDINARY_UPLOAD_URL = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/upload`;
 
 

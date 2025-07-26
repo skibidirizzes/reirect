@@ -410,7 +410,7 @@ const SettingsPage: React.FC = () => {
     ];
     
     return (
-        <div className="w-full h-full flex flex-col dark overflow-hidden">
+        <div className="w-full h-full flex flex-col dark overflow-hidden text-slate-100">
             {/* Header */}
             <header className="flex-shrink-0 bg-slate-900/80 backdrop-blur-sm border-b border-slate-700/50 p-4 flex justify-between items-center z-20">
                 <div className="flex items-center gap-4">

@@ -57,6 +57,8 @@ export const translations = {
     home_qr_code: "QR Code",
     home_share: "Share",
     home_view_data: "View Data",
+    qr_code_title: "QR Code",
+    qr_code_download: "Download PNG",
     
     // Share Modal
     share_modal_title: "Share Link",
@@ -244,6 +246,8 @@ export const translations = {
     home_qr_code: "QR-code",
     home_share: "Delen",
     home_view_data: "Gegevens Bekijken",
+    qr_code_title: "QR-code",
+    qr_code_download: "Download PNG",
 
     // Share Modal
     share_modal_title: "Link Delen",

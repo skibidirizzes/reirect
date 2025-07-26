@@ -3,7 +3,7 @@ import { QRCodeCanvas } from 'qrcode.react';
 import { useNotification } from '../contexts/SettingsContext';
 import type { Settings } from '../types';
 
-const QrCodeModal = ({ config, onClose }: { config: Settings; onClose: () => void }) => {
+const QrCodeModal = ({ config, onClose, t }: { config: Settings; onClose: () => void; t: (key: string) => string; }) => {
   const wrapperRef = React.useRef<HTMLDivElement>(null);
   const addNotification = useNotification();
 
@@ -36,12 +36,12 @@ const QrCodeModal = ({ config, onClose }: { config: Settings; onClose: () => voi
         onClick={(e) => e.stopPropagation()}
       >
         <div className="p-4 border-b border-slate-700 flex justify-between items-center bg-slate-800/70">
-          <h3 className="font-semibold text-white text-lg">QR Code</h3>
+          <h3 className="font-semibold text-white text-lg">{t('qr_code_title')}</h3>
           <button
             onClick={onClose}
             className="px-3 py-1 text-sm bg-slate-700 text-slate-300 rounded-md hover:bg-slate-600 transition-colors"
           >
-            Close
+            {t('close')}
           </button>
         </div>
         <div className="p-6 bg-slate-900 flex flex-col items-center gap-6">
@@ -53,7 +53,7 @@ const QrCodeModal = ({ config, onClose }: { config: Settings; onClose: () => voi
             onClick={handleDownloadQrCode}
             className="w-full px-5 py-3 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-500 transition-colors"
           >
-            Download PNG
+            {t('qr_code_download')}
           </button>
         </div>
       </div>
