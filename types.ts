@@ -36,6 +36,7 @@ export interface CapturedData {
   redirectId: string;
   name: string; // User-editable name for this capture
   timestamp: number;
+  status?: 'completed' | 'incomplete';
   ip: string;
   userAgent: string;
   os: string;

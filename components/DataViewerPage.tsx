@@ -12,6 +12,7 @@ const LoadingSpinner: React.FC<{className?: string}> = ({className}) => (<svg xm
 const ChevronDownIcon: React.FC<{className?: string}> = ({className}) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="6 9 12 15 18 9"></polyline></svg>);
 const DatabaseIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5V19A9 3 0 0 0 21 19V5"/><path d="M3 12A9 3 0 0 0 21 12"/></svg>;
 const PencilIcon: React.FC<{className?: string}> = ({className}) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>);
+const InfoIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10" /><line x1="12" y1="16" x2="12" y2="12" /><line x1="12" y1="8" x2="12.01" y2="8" /></svg>);
 
 
 const MapUpdater: React.FC<{ position: [number, number] }> = ({ position }) => {
@@ -60,6 +61,12 @@ const CaptureAccordion: React.FC<{ capture: CapturedData }> = ({ capture }) => {
 
     return (
         <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl overflow-hidden">
+            {capture.status === 'incomplete' && (
+                <div className="p-3 bg-yellow-500/10 text-yellow-300 text-xs font-semibold flex items-center gap-2 border-b border-yellow-500/20">
+                    <InfoIcon className="w-4 h-4 flex-shrink-0" />
+                    <span>{t('data_viewer_incomplete_capture_warning')}</span>
+                </div>
+            )}
             <button onClick={() => setIsOpen(!isOpen)} className="w-full flex justify-between items-center p-4 text-left">
                 <div className="flex-grow group flex items-center gap-2 min-w-0">
                     {isEditing ? (

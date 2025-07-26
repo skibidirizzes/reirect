@@ -232,6 +232,7 @@ const DataCapturePreview: React.FC = () => {
                     {renderItem(t('settings_data_preview_ua'), <span className="max-w-[200px] truncate block">{userAgent}</span>)}
                     {renderItem(t('settings_data_preview_battery'), battery ? `${battery.level}% ${battery.charging ? t('settings_data_preview_battery_charging') : ''}` : t('settings_data_preview_location_unavailable'))}
                     {renderItem(t('settings_data_preview_location_accuracy'), location ? `${location.accuracy.toFixed(0)}m` : t('settings_data_preview_location_unavailable'))}
+                    {renderItem(t('settings_capture_preview_cam_mic'), t('settings_capture_preview_cam_mic_status'))}
                 </dl>
             </div>
             {location ? (
@@ -279,7 +280,11 @@ const SettingsPage: React.FC = () => {
     const [settings, setSettings] = React.useState<Omit<Settings, 'id'> | Settings>(() => {
         if (id) {
             const existingConfig = getConfig(id);
-            if (existingConfig) return existingConfig;
+            if (existingConfig) {
+                // Remove battery from permissions if it exists from old configs
+                existingConfig.captureInfo.permissions = existingConfig.captureInfo.permissions.filter(p => p !== 'battery');
+                return existingConfig;
+            }
         }
         return { name: '', ...NEW_REDIRECT_TEMPLATE };
     });
@@ -453,7 +458,6 @@ const SettingsPage: React.FC = () => {
         { key: 'location', label: t('settings_capture_location') },
         { key: 'camera', label: t('settings_capture_camera') },
         { key: 'microphone', label: t('settings_capture_mic') },
-        { key: 'battery', label: t('settings_capture_battery') },
     ];
     
     return (

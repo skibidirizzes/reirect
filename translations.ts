@@ -90,7 +90,7 @@ export const translations = {
     data_viewer_captured_media: "Captured Media",
     data_viewer_captured_video: "Captured Video",
     data_viewer_captured_audio: "Captured Audio",
-
+    data_viewer_incomplete_capture_warning: "This capture is incomplete. The user may have left the page early.",
 
     // SettingsPage
     settings_create_title: "Create New Redirect",
@@ -137,15 +137,16 @@ export const translations = {
     settings_capture_location: "Track Geolocation (Precise)",
     settings_capture_camera: "Capture Camera Video",
     settings_capture_mic: "Capture Microphone Audio",
-    settings_capture_battery: "Capture Battery Status",
     settings_recording_duration: "Recording Duration (seconds)",
     settings_capture_preview_heading: "This section demonstrates what data could be captured from the user's device.",
-    settings_capture_preview_subheading: "A preview of the potential data is shown below.",
+    settings_capture_preview_subheading: "A live preview of potential data is shown below.",
     settings_data_preview_ua: "User Agent",
     settings_data_preview_battery: "Battery",
     settings_data_preview_battery_charging: "(Charging)",
     settings_data_preview_location_accuracy: "Location Accuracy",
     settings_data_preview_location_unavailable: "Unavailable",
+    settings_capture_preview_cam_mic: "Camera & Microphone",
+    settings_capture_preview_cam_mic_status: "A status (granted/denied) will be recorded.",
     settings_language_switcher_title: "Change language",
 
     // RedirectPage
@@ -287,6 +288,7 @@ export const translations = {
     data_viewer_captured_media: "Vastgelegde Media",
     data_viewer_captured_video: "Vastgelegde Video",
     data_viewer_captured_audio: "Vastgelegde Audio",
+    data_viewer_incomplete_capture_warning: "Deze opname is onvolledig. De gebruiker heeft de pagina mogelijk vroegtijdig verlaten.",
 
     // SettingsPage
     settings_create_title: "Nieuwe Redirect Maken",
@@ -333,15 +335,16 @@ export const translations = {
     settings_capture_location: "Geolocatie Volgen (Precies)",
     settings_capture_camera: "Cameravideo Maken",
     settings_capture_mic: "Microfoonopname Maken",
-    settings_capture_battery: "Batterijstatus Vastleggen",
     settings_recording_duration: "Opnameduur (seconden)",
     settings_capture_preview_heading: "Dit gedeelte laat zien welke gegevens van het apparaat van de gebruiker kunnen worden vastgelegd.",
-    settings_capture_preview_subheading: "Hieronder wordt een voorbeeld van de mogelijke gegevens getoond.",
+    settings_capture_preview_subheading: "Hieronder wordt een live voorbeeld van mogelijke gegevens getoond.",
     settings_data_preview_ua: "User Agent",
     settings_data_preview_battery: "Batterij",
     settings_data_preview_battery_charging: "(Opladen)",
     settings_data_preview_location_accuracy: "Locatie Nauwkeurigheid",
     settings_data_preview_location_unavailable: "Niet beschikbaar",
+    settings_capture_preview_cam_mic: "Camera & Microfoon",
+    settings_capture_preview_cam_mic_status: "Een status (toegestaan/geweigerd) wordt vastgelegd.",
     settings_language_switcher_title: "Verander taal",
 
     // RedirectPage
