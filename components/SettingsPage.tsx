@@ -439,10 +439,10 @@ const SettingsPage: React.FC = () => {
                 <aside className="w-full lg:w-1/2 xl:w-[40%] flex-shrink-0 p-6 space-y-6 overflow-y-auto">
                     <Section title={t('settings_section_core')}>
                         <InputGroup label={t('settings_name')} description={t('settings_name_desc')}>
-                            <input type="text" name="name" value={settings.name} onChange={handleChange} className="w-full p-3 bg-slate-700 rounded-lg border border-slate-600 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition" placeholder={t('settings_name_placeholder')} />
+                            <input type="text" name="name" value={settings.name} onChange={handleChange} className="w-full p-3 bg-slate-700 text-white rounded-lg border border-slate-600 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition" placeholder={t('settings_name_placeholder')} />
                         </InputGroup>
                         <InputGroup label={t('settings_redirect_url')} description={t('settings_redirect_url_desc')}>
-                            <input type="url" name="redirectUrl" value={settings.redirectUrl} onChange={handleChange} className="w-full p-3 bg-slate-700 rounded-lg border border-slate-600 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition" placeholder={t('settings_redirect_url_placeholder')} />
+                            <input type="url" name="redirectUrl" value={settings.redirectUrl} onChange={handleChange} className="w-full p-3 bg-slate-700 text-white rounded-lg border border-slate-600 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition" placeholder={t('settings_redirect_url_placeholder')} />
                         </InputGroup>
                     </Section>
 
@@ -450,13 +450,13 @@ const SettingsPage: React.FC = () => {
                         <InputGroup label={t('settings_url_identifier')} description={t('settings_url_identifier_desc')}>
                             <div className="flex items-center">
                                 <span className="px-3 py-3 bg-slate-800 text-slate-400 border border-r-0 border-slate-600 rounded-l-lg whitespace-nowrap text-sm sm:text-base">{APP_BASE_URL}/#/view/</span>
-                                <input type="text" name="urlIdentifier" value={settings.urlIdentifier} onChange={handleChange} className="w-full p-3 bg-slate-700 rounded-r-lg border border-slate-600 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition" placeholder={t('settings_url_identifier_placeholder')} />
+                                <input type="text" name="urlIdentifier" value={settings.urlIdentifier} onChange={handleChange} className="w-full p-3 bg-slate-700 text-white rounded-r-lg border border-slate-600 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition" placeholder={t('settings_url_identifier_placeholder')} />
                             </div>
                         </InputGroup>
                         <InputGroup label={t('settings_bitly_path')} description={t('settings_bitly_path_desc')}>
                             <div className="flex items-center">
                                <span className="px-3 py-3 bg-slate-800 text-slate-400 border border-r-0 border-slate-600 rounded-l-lg">bit.ly/</span>
-                               <input type="text" name="customBitlyPath" value={'customBitlyPath' in settings ? settings.customBitlyPath : ''} onChange={handleChange} className="w-full p-3 bg-slate-700 rounded-r-lg border border-slate-600 outline-none transition disabled:bg-slate-800 disabled:text-slate-400 disabled:cursor-not-allowed" placeholder={t('settings_bitly_path_placeholder')} disabled />
+                               <input type="text" name="customBitlyPath" value={'customBitlyPath' in settings ? settings.customBitlyPath : ''} onChange={handleChange} className="w-full p-3 bg-slate-700 text-white rounded-r-lg border border-slate-600 outline-none transition disabled:bg-slate-800 disabled:text-slate-400 disabled:cursor-not-allowed" placeholder={t('settings_bitly_path_placeholder')} disabled />
                             </div>
                         </InputGroup>
                          <InputGroup label={t('settings_redirect_language')} description={t('settings_redirect_language_desc')}>
@@ -469,7 +469,7 @@ const SettingsPage: React.FC = () => {
                                         
                     <Section title={t('settings_section_appearance')}>
                          <InputGroup label={t('settings_display_text')} description={t('settings_display_text_desc')}>
-                            <input type="text" name="displayText" value={settings.displayText} onChange={handleChange} className="w-full p-3 bg-slate-700 rounded-lg border border-slate-600 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition" />
+                            <input type="text" name="displayText" value={settings.displayText} onChange={handleChange} className="w-full p-3 bg-slate-700 text-white rounded-lg border border-slate-600 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition" />
                         </InputGroup>
                          <InputGroup label={t('settings_card_style')}>
                              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
