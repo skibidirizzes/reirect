@@ -175,9 +175,9 @@ const MapUpdater: React.FC<{ position: [number, number] }> = ({ position }) => {
 
 const DataCapturePreview: React.FC = () => {
     const { t } = useLanguage();
-    const [location, setLocation] = React.useState<{ lat: number; lon: number; accuracy: number; } | null>(null);
+    // Use a static, simulated location for the preview to avoid permission prompts on the settings page.
+    const location = { lat: 51.5074, lon: -0.1278, accuracy: 20 };
     const [battery, setBattery] = React.useState<{ level: number; charging: boolean; } | null>(null);
-    const [status, setStatus] = React.useState('loading');
 
     React.useEffect(() => {
         const fetchBatteryData = async () => {
@@ -188,15 +188,18 @@ const DataCapturePreview: React.FC = () => {
                     const updateBattery = () => setBattery({ level: Math.round(bm.level * 100), charging: bm.charging });
                     bm.addEventListener('levelchange', updateBattery);
                     bm.addEventListener('chargingchange', updateBattery);
-                } catch (e) { console.warn("Could not get battery status for preview."); }
+                    
+                    return () => {
+                        bm.removeEventListener('levelchange', updateBattery);
+                        bm.removeEventListener('chargingchange', updateBattery);
+                    };
+                } catch (e) { 
+                    console.warn("Could not get battery status for preview."); 
+                }
             }
         };
         
         fetchBatteryData();
-
-        // Use a static, simulated location for the preview to avoid permission prompts on the settings page.
-        setLocation({ lat: 51.5074, lon: -0.1278, accuracy: 20 });
-        setStatus('loaded');
     }, []);
 
     const renderItem = (label: string, value: React.ReactNode) => (
@@ -214,29 +217,20 @@ const DataCapturePreview: React.FC = () => {
                  <dl>
                     {renderItem(t('settings_data_preview_ua'), <span className="max-w-[200px] truncate block">{userAgent}</span>)}
                     {renderItem(t('settings_data_preview_battery'), battery ? `${battery.level}% ${battery.charging ? t('settings_data_preview_battery_charging') : ''}` : t('settings_data_preview_location_unavailable'))}
-                    {renderItem(t('settings_data_preview_location_accuracy'), location ? `${location.accuracy.toFixed(0)}m` : t('settings_data_preview_location_unavailable'))}
+                    {renderItem(t('settings_data_preview_location_accuracy'), `${location.accuracy.toFixed(0)}m`)}
                     {renderItem(t('settings_capture_preview_cam_mic'), t('settings_capture_preview_cam_mic_status'))}
                 </dl>
             </div>
-            {location ? (
-                 <div className="h-48 w-full rounded-lg overflow-hidden border border-slate-700/50">
-                     <MapContainer center={[location.lat, location.lon]} zoom={13} scrollWheelZoom={false} style={{ height: "100%", width: "100%", backgroundColor: '#1e293b' }}>
-                         <TileLayer
-                             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                         />
-                         <Marker position={[location.lat, location.lon]} />
-                         <MapUpdater position={[location.lat, location.lon]} />
-                     </MapContainer>
-                 </div>
-            ) : (
-                <div className="h-48 w-full rounded-lg border border-dashed border-slate-700 flex items-center justify-center text-center p-4">
-                    <p className="text-slate-400 text-sm">
-                        {status === 'loading' && 'Loading location preview...'}
-                        {status === 'error' && 'Could not get location data.'}
-                    </p>
-                </div>
-            )}
+            <div className="h-48 w-full rounded-lg overflow-hidden border border-slate-700/50">
+                <MapContainer center={[location.lat, location.lon]} zoom={13} scrollWheelZoom={false} style={{ height: "100%", width: "100%", backgroundColor: '#1e293b' }}>
+                    <TileLayer
+                        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                    />
+                    <Marker position={[location.lat, location.lon]} />
+                    <MapUpdater position={[location.lat, location.lon]} />
+                </MapContainer>
+            </div>
         </div>
     );
 };

