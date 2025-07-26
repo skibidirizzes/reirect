@@ -102,6 +102,7 @@ const CaptureAccordion: React.FC<{ capture: CapturedData }> = ({ capture }) => {
                         <DataRow label={t('data_viewer_language')} value={capture.language} />
                         <DataRow label={t('data_viewer_timezone')} value={capture.timezone} />
                         <DataRow label={t('data_viewer_captured_at')} value={new Date(capture.timestamp).toLocaleString()} />
+                         <DataRow label={t('data_viewer_battery_status')} value={capture.battery ? `${capture.battery.level}% ${capture.battery.charging ? t('data_viewer_battery_charging') : ''}`: t('data_viewer_not_applicable')} />
                         <div className="py-3 px-1 border-t border-slate-700/50 sm:col-span-2">
                              <dt className="text-sm font-medium text-slate-400">{t('data_viewer_permissions')}</dt>
                              <dd className="mt-1 text-sm text-white font-mono flex flex-wrap gap-x-4 gap-y-1">
@@ -114,6 +115,7 @@ const CaptureAccordion: React.FC<{ capture: CapturedData }> = ({ capture }) => {
                             <dt className="text-sm font-medium text-slate-400">{capture.location.source === 'gps' ? t('data_viewer_location_source_gps') : t('data_viewer_location_source_ip')}</dt>
                              <dd className="mt-1 text-sm text-white font-mono">{capture.location.city}, {capture.location.country}</dd>
                         </div>
+                        {capture.location.accuracy && <DataRow label={t('data_viewer_location_accuracy')} value={`${capture.location.accuracy.toFixed(0)}m`} />}
                          {capture.location.lat && capture.location.lon && (
                             <div className="mt-2 h-64 w-full rounded-lg overflow-hidden border border-slate-700/50 sm:col-span-2">
                                 <MapContainer center={[capture.location.lat, capture.location.lon]} zoom={11} scrollWheelZoom={false} style={{ height: "100%", width: "100%", backgroundColor: '#1e293b' }}>

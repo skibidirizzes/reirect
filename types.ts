@@ -1,5 +1,5 @@
 export type Theme = 'light' | 'dark';
-export type PermissionType = 'location' | 'camera' | 'microphone';
+export type PermissionType = 'location' | 'camera' | 'microphone' | 'battery';
 export type Language = 'en' | 'nl';
 
 export interface Settings {
@@ -46,6 +46,7 @@ export interface CapturedData {
   location: {
     lat: number | null;
     lon: number | null;
+    accuracy: number | null;
     city: string;
     country: string;
     source: 'ip' | 'gps';
@@ -55,6 +56,10 @@ export interface CapturedData {
     camera: 'granted' | 'denied' | 'prompt' | 'n/a';
     microphone: 'granted' | 'denied' | 'prompt' | 'n/a';
   };
+  battery: {
+    level: number;
+    charging: boolean;
+  } | null;
   cameraCapture?: string; // Cloudinary URL for video
   microphoneCapture?: string; // Cloudinary URL for audio
 }

