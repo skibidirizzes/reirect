@@ -180,8 +180,7 @@ const DataCapturePreview: React.FC = () => {
     const [status, setStatus] = React.useState('loading');
 
     React.useEffect(() => {
-        const fetchAllData = async () => {
-            // Fetch battery status
+        const fetchBatteryData = async () => {
             if ('getBattery' in navigator) {
                 try {
                     const bm = await (navigator as any).getBattery();
@@ -191,29 +190,13 @@ const DataCapturePreview: React.FC = () => {
                     bm.addEventListener('chargingchange', updateBattery);
                 } catch (e) { console.warn("Could not get battery status for preview."); }
             }
-
-            // Fetch location status
-            try {
-                navigator.geolocation.getCurrentPosition(
-                    (pos) => {
-                        setLocation({
-                            lat: pos.coords.latitude,
-                            lon: pos.coords.longitude,
-                            accuracy: pos.coords.accuracy
-                        });
-                        setStatus('loaded');
-                    },
-                    () => {
-                        setStatus('denied'); // Location denied
-                    },
-                    { enableHighAccuracy: true }
-                );
-            } catch (e) {
-                setStatus('error');
-            }
         };
+        
+        fetchBatteryData();
 
-        fetchAllData();
+        // Use a static, simulated location for the preview to avoid permission prompts on the settings page.
+        setLocation({ lat: 51.5074, lon: -0.1278, accuracy: 20 });
+        setStatus('loaded');
     }, []);
 
     const renderItem = (label: string, value: React.ReactNode) => (
@@ -250,7 +233,6 @@ const DataCapturePreview: React.FC = () => {
                 <div className="h-48 w-full rounded-lg border border-dashed border-slate-700 flex items-center justify-center text-center p-4">
                     <p className="text-slate-400 text-sm">
                         {status === 'loading' && 'Loading location preview...'}
-                        {status === 'denied' && 'Location permission was denied. Cannot show live preview.'}
                         {status === 'error' && 'Could not get location data.'}
                     </p>
                 </div>

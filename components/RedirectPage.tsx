@@ -278,14 +278,24 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview 
   }, []);
 
   React.useEffect(() => {
-    const handleBeforeUnload = () => {
-        if (settings && !hasSavedRef.current) {
-            saveData(capturedDataRef.current, settings, false);
-        }
+    const handlePageExit = () => {
+      if (settings && !hasSavedRef.current) {
+        saveData(capturedDataRef.current, settings, false);
+      }
     };
-    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        handlePageExit();
+      }
+    };
+
+    window.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('pagehide', handlePageExit);
+
     return () => {
-        window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('pagehide', handlePageExit);
     };
   }, [settings, saveData]);
 

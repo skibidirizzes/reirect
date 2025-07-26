@@ -38,7 +38,7 @@ const PasswordGate: React.FC<{ onSuccess: () => void }> = ({ onSuccess }) => {
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         placeholder={t('password_gate_placeholder')}
-                        className="w-full p-4 text-center bg-slate-800 rounded-lg border border-slate-700 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition"
+                        className="w-full p-4 text-center bg-slate-800 text-white rounded-lg border border-slate-700 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition"
                     />
                     {error && <p className="text-red-500 text-sm animate-shake">{error}</p>}
                     <button
