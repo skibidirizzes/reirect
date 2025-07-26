@@ -31,6 +31,7 @@ export const translations = {
     notification_name_update_failed: "Failed to update name.",
     notification_new_data: "New data captured!",
     notification_verification_success: "Verification successful!",
+    notification_cloudinary_error: "Cloudinary upload failed. Ensure an unsigned upload preset named 'redirecter_preset' exists.",
     settings_url_identifier_error: "This slug is already in use. Please choose another.",
 
     // Password Gate
@@ -217,6 +218,7 @@ export const translations = {
     notification_name_update_failed: "Kon de naam niet bijwerken.",
     notification_new_data: "Nieuwe gegevens vastgelegd!",
     notification_verification_success: "Verificatie succesvol!",
+    notification_cloudinary_error: "Cloudinary-upload mislukt. Zorg ervoor dat er een 'unsigned upload preset' met de naam 'redirecter_preset' bestaat.",
     settings_url_identifier_error: "Deze slug is al in gebruik. Kies een andere.",
 
     // Password Gate
@@ -368,6 +370,8 @@ export const translations = {
     redirect_gradient_card_subtitle: "Je wordt zo doorverbonden...",
     redirect_elegant_card_subtitle: "Doorsturen...",
     redirect_retro_tv_target: "DOEL:",
-    video_player_redirecting: "Doorsturen naar: {url}",
+    redirect_video_player_loading: "Volgende video laden...",
+    redirect_video_player_redirecting: "Doorsturen naar: {url}",
+
   }
 };

