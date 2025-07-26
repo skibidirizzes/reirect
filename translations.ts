@@ -40,6 +40,10 @@ export const translations = {
     password_gate_submit: "Unlock",
     password_gate_error: "Incorrect password. Please try again.",
 
+    // Offline Banner
+    offline_banner_title: "You Are Currently Offline",
+    offline_banner_message: "Please check your internet connection. Some features may be unavailable.",
+
     // HomePage
     home_title: "Link Director",
     home_subtitle: "Manage your custom redirect links.",
@@ -204,6 +208,10 @@ export const translations = {
     password_gate_placeholder: "Voer wachtwoord in",
     password_gate_submit: "Ontgrendelen",
     password_gate_error: "Onjuist wachtwoord. Probeer het opnieuw.",
+
+    // Offline Banner
+    offline_banner_title: "U bent momenteel offline",
+    offline_banner_message: "Controleer uw internetverbinding. Sommige functies zijn mogelijk niet beschikbaar.",
 
     // HomePage
     home_title: "Link Director",
