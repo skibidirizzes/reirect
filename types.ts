@@ -24,6 +24,8 @@ export interface Settings {
   gradientColors: string[];
   redirectLanguage: Language;
   urlIdentifier: string;
+  status: 'active' | 'trashed';
+  trashedAt?: number;
 }
 
 export interface CustomImageAssets {
@@ -74,6 +76,8 @@ export interface SettingsContextType {
   addConfig: (configData: Omit<Settings, 'id'>) => Promise<Settings | null>;
   updateConfig: (id: string, updates: Partial<Omit<Settings, 'id'>>) => void;
   deleteConfig: (id: string) => void;
+  restoreConfig: (id: string) => void;
+  permanentlyDeleteConfig: (id: string) => void;
   getConfig: (id: string) => Settings | undefined;
   customImageAssets: CustomImageAssets;
   addCustomAsset: (type: keyof CustomImageAssets, url: string) => void;

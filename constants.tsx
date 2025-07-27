@@ -35,6 +35,7 @@ export const NEW_REDIRECT_TEMPLATE: Omit<Settings, 'id' | 'name'> = {
   gradientColors: ['#8B5CF6', '#EC4899', '#F59E0B'],
   redirectLanguage: 'en',
   urlIdentifier: '',
+  status: 'active',
 };
 
 export const PREDEFINED_COLORS = [

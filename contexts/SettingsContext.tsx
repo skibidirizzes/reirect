@@ -142,7 +142,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       await updateDoc(docRef, updates);
       setConfigs(prev => 
         prev.map(config => 
-          config.id === id ? { ...config, ...updates } : config
+          config.id === id ? { ...config, ...updates } as Settings : config
         )
       );
     } catch (error) {
@@ -154,14 +154,39 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const deleteConfig = async (id: string) => {
     const docRef = doc(db, "redirects", id);
     try {
-      await deleteDoc(docRef);
-      setConfigs(prev => prev.filter(config => config.id !== id));
+      await updateDoc(docRef, { status: 'trashed', trashedAt: Date.now() });
+      setConfigs(prev => prev.map(c => c.id === id ? {...c, status: 'trashed', trashedAt: Date.now()} : c));
+      addNotification({ type: 'success', message: 'notification_redirect_trashed' });
     } catch (error) {
-       console.error("Error deleting document: ", error);
+       console.error("Error trashing document: ", error);
        addNotification({type: 'error', message: 'notification_redirect_delete_failed'})
     }
   };
   
+  const restoreConfig = async (id: string) => {
+      const docRef = doc(db, "redirects", id);
+      try {
+          await updateDoc(docRef, { status: 'active' });
+          setConfigs(prev => prev.map(c => c.id === id ? {...c, status: 'active', trashedAt: undefined } : c));
+          addNotification({ type: 'success', message: 'notification_redirect_restored' });
+      } catch (error) {
+          console.error("Error restoring document: ", error);
+          addNotification({type: 'error', message: 'notification_redirect_restore_failed'});
+      }
+  };
+
+  const permanentlyDeleteConfig = async (id: string) => {
+      const docRef = doc(db, "redirects", id);
+      try {
+        await deleteDoc(docRef);
+        setConfigs(prev => prev.filter(config => config.id !== id));
+        addNotification({ type: 'success', message: 'notification_redirect_deleted_permanently' });
+      } catch (error) {
+        console.error("Error permanently deleting document: ", error);
+        addNotification({type: 'error', message: 'notification_redirect_delete_failed'});
+      }
+  };
+
   const getConfig = (id: string): Settings | undefined => {
     return configs.find(config => config.id === id);
   };
@@ -208,6 +233,8 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     addConfig,
     updateConfig,
     deleteConfig,
+    restoreConfig,
+    permanentlyDeleteConfig,
     getConfig,
     colors: PREDEFINED_COLORS,
     customImageAssets,
