@@ -1,31 +1,26 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import * as admin from 'firebase-admin';
+import { initializeApp, getApps } from 'firebase/app';
+import { getFirestore, collection, addDoc } from 'firebase/firestore';
 
-// --- Firebase Admin SDK Initialization ---
-// This method is more robust for Vercel deployment by using a Base64 encoded key.
-const hasEnvVars =
-  process.env.FIREBASE_PROJECT_ID &&
-  process.env.FIREBASE_PRIVATE_KEY_BASE64 && // Check for the Base64 key
-  process.env.FIREBASE_CLIENT_EMAIL;
+// IMPORTANT: In a real production application, these keys should be stored
+// securely as an environment variables and not be hardcoded.
+const firebaseConfig = {
+    apiKey: "AIzaSyCsAZjQYSkd6GnRMZjlTj9gE3er0C6T7CU",
+    authDomain: "redirect-2a90a.firebaseapp.com",
+    projectId: "redirect-2a90a",
+    storageBucket: "redirect-2a90a.firebasestorage.app",
+    messagingSenderId: "339748579597",
+    appId: "1:339748579597:web:8bef1a3182649cecdc6844",
+    measurementId: "G-E7VW58JM16"
+};
 
-if (hasEnvVars && !admin.apps.length) {
-  try {
-    // Decode the private key from Base64
-    const privateKey = Buffer.from(process.env.FIREBASE_PRIVATE_KEY_BASE64!, 'base64').toString('utf-8');
-    
-    admin.initializeApp({
-      credential: admin.credential.cert({
-        projectId: process.env.FIREBASE_PROJECT_ID!,
-        privateKey: privateKey, // Use the decoded key
-        clientEmail: process.env.FIREBASE_CLIENT_EMAIL!,
-      }),
-    });
-  } catch (error) {
-    console.error('Firebase admin initialization error:', error);
-  }
+
+// Initialize Firebase
+if (!getApps().length) {
+  initializeApp(firebaseConfig);
 }
 
-const db = admin.apps.length ? admin.firestore() : null;
+const db = getFirestore();
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Set CORS headers
@@ -40,15 +35,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method Not Allowed' });
-  }
-
-  // Check if Firebase Admin SDK is initialized
-  if (!db) {
-    console.error('Firestore is not initialized. Check server logs and environment variables.');
-    return res.status(500).json({ 
-      error: 'Internal Server Error', 
-      details: 'The server is not configured correctly to connect to the database. Ensure FIREBASE_PROJECT_ID, FIREBASE_PRIVATE_KEY_BASE64, and FIREBASE_CLIENT_EMAIL environment variables are set correctly in Vercel.' 
-    });
   }
 
   try {
@@ -73,7 +59,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
     
     // Save to Firestore
-    const docRef = await db.collection('captures').add(dataToSave);
+    const docRef = await addDoc(collection(db, 'captures'), dataToSave);
     
     // Respond with success. sendBeacon does not process the response, but fetch does.
     return res.status(201).json({ success: true, id: docRef.id });
