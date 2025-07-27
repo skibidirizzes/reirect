@@ -51,6 +51,7 @@ export interface CapturedData {
     city: string;
     country: string;
     source: 'ip' | 'gps';
+    address?: string;
   };
   permissions: {
     location: 'granted' | 'denied' | 'prompt' | 'n/a';

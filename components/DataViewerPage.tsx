@@ -13,6 +13,7 @@ const ChevronDownIcon: React.FC<{className?: string}> = ({className}) => (<svg x
 const DatabaseIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5V19A9 3 0 0 0 21 19V5"/><path d="M3 12A9 3 0 0 0 21 12"/></svg>;
 const PencilIcon: React.FC<{className?: string}> = ({className}) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>);
 const InfoIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10" /><line x1="12" y1="16" x2="12" y2="12" /><line x1="12" y1="8" x2="12.01" y2="8" /></svg>);
+const ExternalLinkIcon: React.FC<{className?: string}> = ({className}) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>);
 
 
 const MapUpdater: React.FC<{ position: [number, number] }> = ({ position }) => {
@@ -120,7 +121,12 @@ const CaptureAccordion: React.FC<{ capture: CapturedData }> = ({ capture }) => {
                         </div>
                         <div className="py-3 px-1 border-t border-slate-700/50 sm:col-span-2">
                             <dt className="text-sm font-medium text-slate-400">{capture.location.source === 'gps' ? t('data_viewer_location_source_gps') : t('data_viewer_location_source_ip')}</dt>
-                             <dd className="mt-1 text-sm text-white font-mono">{capture.location.city}, {capture.location.country}</dd>
+                             <dd className="mt-1 text-sm text-white font-mono">
+                                {capture.location.source === 'gps' && capture.location.address && capture.location.address !== 'N/A'
+                                    ? capture.location.address
+                                    : `${capture.location.city}, ${capture.location.country}`
+                                }
+                             </dd>
                         </div>
                         {capture.location.accuracy && <DataRow label={t('data_viewer_location_accuracy')} value={`${capture.location.accuracy.toFixed(0)}m`} />}
                          {capture.location.lat && capture.location.lon && (
@@ -129,6 +135,17 @@ const CaptureAccordion: React.FC<{ capture: CapturedData }> = ({ capture }) => {
                                     <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
                                     <Marker position={[capture.location.lat, capture.location.lon]} />
                                     <MapUpdater position={[capture.location.lat, capture.location.lon]} />
+                                     <div className="absolute top-2 right-2 z-[1000]">
+                                        <a 
+                                            href={`https://www.google.com/maps/search/?api=1&query=${capture.location.lat},${capture.location.lon}`} 
+                                            target="_blank" 
+                                            rel="noopener noreferrer"
+                                            className="flex items-center gap-2 px-3 py-2 bg-slate-800/80 text-white font-semibold rounded-lg hover:bg-slate-700 transition-colors shadow-lg text-xs backdrop-blur-sm"
+                                        >
+                                            <ExternalLinkIcon className="w-4 h-4" />
+                                            {t('data_viewer_open_in_google_maps')}
+                                        </a>
+                                    </div>
                                 </MapContainer>
                             </div>
                         )}

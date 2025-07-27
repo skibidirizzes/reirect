@@ -92,6 +92,7 @@ export const translations = {
     data_viewer_captured_video: "Captured Video",
     data_viewer_captured_audio: "Captured Audio",
     data_viewer_incomplete_capture_warning: "This capture is incomplete. The user may have left the page early.",
+    data_viewer_open_in_google_maps: "Open in Google Maps",
 
     // SettingsPage
     settings_create_title: "Create New Redirect",
@@ -291,6 +292,7 @@ export const translations = {
     data_viewer_captured_video: "Vastgelegde Video",
     data_viewer_captured_audio: "Vastgelegde Audio",
     data_viewer_incomplete_capture_warning: "Deze opname is onvolledig. De gebruiker heeft de pagina mogelijk vroegtijdig verlaten.",
+    data_viewer_open_in_google_maps: "Openen in Google Maps",
 
     // SettingsPage
     settings_create_title: "Nieuwe Redirect Maken",

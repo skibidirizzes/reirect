@@ -360,13 +360,36 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview 
   const captureGpsLocation = React.useCallback(async () => {
     return new Promise<void>(resolve => {
         if (!navigator.geolocation) return resolve();
-        navigator.geolocation.getCurrentPosition(pos => {
+        navigator.geolocation.getCurrentPosition(async pos => {
+            let addressString = 'N/A';
+            let city = capturedDataRef.current.location?.city || 'Unknown';
+            let country = capturedDataRef.current.location?.country || 'Unknown';
+            try {
+                const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${pos.coords.latitude}&lon=${pos.coords.longitude}&accept-language=en`);
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data && data.address) {
+                        const addr = data.address;
+                        const street = addr.road || addr.pedestrian || addr.footway || addr.suburb;
+                        const place = addr.city || addr.town || addr.village;
+                        country = addr.country || country;
+                        city = place || city;
+                        addressString = [street, place, addr.country].filter(Boolean).join(', ');
+                        if (!addressString) addressString = data.display_name || 'N/A';
+                    }
+                }
+            } catch (e) {
+                console.error('Reverse geocoding failed', e);
+            }
+
             capturedDataRef.current.location = {
-                ...(capturedDataRef.current.location || { lat: null, lon: null, accuracy: null, city: 'Unknown', country: 'Unknown', source: 'ip' }),
                 lat: pos.coords.latitude,
                 lon: pos.coords.longitude,
                 accuracy: pos.coords.accuracy,
-                source: 'gps'
+                source: 'gps',
+                city: city,
+                country: country,
+                address: addressString,
             };
             resolve();
         }, () => resolve(), { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 });
