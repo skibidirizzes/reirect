@@ -6,14 +6,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { db } from '../firebase';
 import { collection, query, where, getDocs, doc, updateDoc, orderBy } from 'firebase/firestore';
 import type { CapturedData, Settings } from '../types';
-
-const ArrowLeftIcon: React.FC<{className?: string}> = ({className}) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>);
-const LoadingSpinner: React.FC<{className?: string}> = ({className}) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`animate-spin ${className}`}><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>);
-const ChevronDownIcon: React.FC<{className?: string}> = ({className}) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="6 9 12 15 18 9"></polyline></svg>);
-const DatabaseIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5V19A9 3 0 0 0 21 19V5"/><path d="M3 12A9 3 0 0 0 21 12"/></svg>;
-const PencilIcon: React.FC<{className?: string}> = ({className}) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>);
-const InfoIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10" /><line x1="12" y1="16" x2="12" y2="12" /><line x1="12" y1="8" x2="12.01" y2="8" /></svg>);
-const ExternalLinkIcon: React.FC<{className?: string}> = ({className}) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>);
+import { ArrowLeftIcon, LoadingSpinner, ChevronDownIcon, DatabaseIcon, PencilIcon, InfoIcon, ExternalLinkIcon } from './Icons';
 
 
 const MapUpdater: React.FC<{ position: [number, number] }> = ({ position }) => {
@@ -319,12 +312,15 @@ const DataViewerPage: React.FC = () => {
                     <div className="space-y-6">
                         {sessionizedCaptures.map((group, index) => {
                            const firstCaptureInGroup = group[0];
+                           const recordCount = group.length;
+                           const recordsText = t(recordCount > 1 ? 'data_viewer_records' : 'data_viewer_record');
+                           const date = new Date(firstCaptureInGroup.timestamp).toLocaleDateString();
                            return (
                                 <div key={`session-group-${index}`}>
                                     <div className="relative text-center my-4">
                                         <hr className="absolute top-1/2 left-0 w-full h-px bg-slate-700 -translate-y-1/2" />
                                         <span className="relative bg-slate-900 px-4 text-sm font-semibold text-slate-400">
-                                            Session from {firstCaptureInGroup.location.city} ({group.length} {group.length > 1 ? 'records' : 'record'})
+                                            {t('data_viewer_session_from', { city: firstCaptureInGroup.location.city })} on {date} ({recordCount} {recordsText})
                                         </span>
                                     </div>
                                     <div className="space-y-4">

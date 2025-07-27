@@ -9,17 +9,9 @@ import { NEW_REDIRECT_TEMPLATE, BITLY_API_TOKEN, BITLY_API_URL, CARD_STYLES, APP
 import RedirectPage from './RedirectPage';
 import { db } from '../firebase';
 import { collection, query, where, getDocs } from 'firebase/firestore';
+import { ArrowLeftIcon, LoadingSpinner, InfoIcon, UploadCloudIcon, XIcon, PlusIcon, GripVerticalIcon, CopyIcon } from './Icons';
 
 // --- Re-usable UI Components ---
-
-const ArrowLeftIcon: React.FC<{className?: string}> = ({className}) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>);
-const LoadingSpinner: React.FC<{className?: string}> = ({className}) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`animate-spin ${className}`}><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>);
-const InfoIcon: React.FC<{className?: string}> = ({className}) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10" /><line x1="12" y1="16" x2="12" y2="12" /><line x1="12" y1="8" x2="12.01" y2="8" /></svg>);
-const UploadCloudIcon: React.FC<{className?: string}> = ({className}) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/><path d="M12 12v9"/><path d="m16 16-4-4-4 4"/></svg>);
-const XIcon: React.FC<{className?: string}> = ({className}) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>);
-const PlusIcon: React.FC<{className?: string}> = ({className}) => (<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M5 12h14"/><path d="M12 5v14"/></svg>);
-const GripVerticalIcon: React.FC<{className?: string}> = ({className}) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="9" cy="12" r="1"/><circle cx="9" cy="5" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="19" r="1"/></svg>);
-
 
 const InputGroup: React.FC<{ label: string, description?: string, children: React.ReactNode }> = ({ label, description, children }) => (
     <div className="space-y-2">
@@ -339,14 +331,24 @@ const SettingsPage: React.FC = () => {
         }
     };
     
-    const generateShareableUrl = (settingsData: Settings) => {
-        return `${APP_BASE_URL}/#/view/${settingsData.urlIdentifier}`;
+    const generateShareableUrl = (urlIdentifier: string) => {
+        return `${APP_BASE_URL}/#/view/${urlIdentifier}`;
+    };
+
+    const handleCopyUrl = () => {
+        const urlToCopy = generateShareableUrl(settings.urlIdentifier);
+        navigator.clipboard.writeText(urlToCopy).then(() => {
+            addNotification({ type: 'success', message: 'notification_link_copied' });
+        }).catch(err => {
+            console.error('Failed to copy link: ', err);
+            addNotification({ type: 'error', message: 'notification_link_copy_failed' });
+        });
     };
 
     const createOrUpdateBitlyLink = async (settingsData: Settings): Promise<{bitlyLink?: string, bitlyId?: string}> => {
         if (!settingsData.redirectUrl || !settingsData.urlIdentifier) return {};
         
-        const longUrl = generateShareableUrl(settingsData);
+        const longUrl = generateShareableUrl(settingsData.urlIdentifier);
         const body: {long_url: string, custom_bitlinks?: string[]} = { long_url: longUrl };
 
         try {
@@ -477,7 +479,10 @@ const SettingsPage: React.FC = () => {
                         <InputGroup label={t('settings_url_identifier')} description={t('settings_url_identifier_desc')}>
                             <div className="flex items-center">
                                 <span className="px-3 py-3 bg-slate-800 text-slate-400 border border-r-0 border-slate-600 rounded-l-lg whitespace-nowrap text-sm sm:text-base">{APP_BASE_URL}/#/view/</span>
-                                <input type="text" name="urlIdentifier" value={settings.urlIdentifier} onChange={handleChange} className="w-full p-3 bg-slate-700 text-white rounded-r-lg border border-slate-600 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition" placeholder={t('settings_url_identifier_placeholder')} />
+                                <input type="text" name="urlIdentifier" value={settings.urlIdentifier} onChange={handleChange} className="w-full p-3 bg-slate-700 text-white border border-l-0 border-slate-600 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition" placeholder={t('settings_url_identifier_placeholder')} />
+                                 <button onClick={handleCopyUrl} className="px-3 py-3 bg-slate-700 text-slate-300 border border-l-0 border-slate-600 rounded-r-lg hover:bg-slate-600 transition-colors">
+                                    <CopyIcon />
+                                </button>
                             </div>
                         </InputGroup>
                         <InputGroup label={t('settings_bitly_path')} description={t('settings_bitly_path_desc')}>
