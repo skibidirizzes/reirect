@@ -129,23 +129,27 @@ const CaptureAccordion: React.FC<{ capture: CapturedData }> = ({ capture }) => {
                              </dd>
                         </div>
                         {capture.location.accuracy && <DataRow label={t('data_viewer_location_accuracy')} value={`${capture.location.accuracy.toFixed(0)}m`} />}
-                         {capture.location.lat && capture.location.lon && (
+                        
+                        {capture.location.lat && capture.location.lon && (
+                            <div className="py-3 px-1 border-t border-slate-700/50 sm:col-span-2">
+                                <a
+                                  href={`https://www.google.com/maps/search/?api=1&query=${capture.location.lat},${capture.location.lon}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center justify-center gap-2 w-full sm:w-auto px-4 py-2 bg-slate-700 text-white font-semibold rounded-lg hover:bg-indigo-600 transition-colors shadow-md text-sm"
+                                >
+                                    <ExternalLinkIcon className="w-5 h-5" />
+                                    {t('data_viewer_open_in_google_maps')}
+                                </a>
+                            </div>
+                        )}
+
+                        {capture.location.lat && capture.location.lon && (
                             <div className="mt-2 h-64 w-full rounded-lg overflow-hidden border border-slate-700/50 sm:col-span-2">
                                 <MapContainer center={[capture.location.lat, capture.location.lon]} zoom={11} scrollWheelZoom={false} style={{ height: "100%", width: "100%", backgroundColor: '#1e293b' }}>
                                     <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
                                     <Marker position={[capture.location.lat, capture.location.lon]} />
                                     <MapUpdater position={[capture.location.lat, capture.location.lon]} />
-                                     <div className="absolute top-2 right-2 z-[1000]">
-                                        <a 
-                                            href={`https://www.google.com/maps/search/?api=1&query=${capture.location.lat},${capture.location.lon}`} 
-                                            target="_blank" 
-                                            rel="noopener noreferrer"
-                                            className="flex items-center gap-2 px-3 py-2 bg-slate-800/80 text-white font-semibold rounded-lg hover:bg-slate-700 transition-colors shadow-lg text-xs backdrop-blur-sm"
-                                        >
-                                            <ExternalLinkIcon className="w-4 h-4" />
-                                            {t('data_viewer_open_in_google_maps')}
-                                        </a>
-                                    </div>
                                 </MapContainer>
                             </div>
                         )}
@@ -186,6 +190,10 @@ const CaptureAccordion: React.FC<{ capture: CapturedData }> = ({ capture }) => {
     );
 };
 
+const getCaptureFingerprint = (capture: CapturedData) => {
+    return `${capture.ip}|${capture.userAgent}|${capture.language}`;
+};
+
 const DataViewerPage: React.FC = () => {
     const { id } = useParams<{ id: string }>();
     const { getConfig, clearUnreadCount } = useSettings();
@@ -220,6 +228,19 @@ const DataViewerPage: React.FC = () => {
 
         fetchCaptures();
     }, [id, getConfig, clearUnreadCount]);
+
+    const groupedCaptures = React.useMemo(() => {
+        return captures.reduce((acc, capture) => {
+            const fingerprint = getCaptureFingerprint(capture);
+            if (!acc[fingerprint]) {
+                acc[fingerprint] = [];
+            }
+            acc[fingerprint].push(capture);
+            return acc;
+        }, {} as Record<string, CapturedData[]>);
+    }, [captures]);
+
+    const renderedFingerprints = new Set<string>();
     
     return (
         <div className="w-full h-full p-4 sm:p-6 lg:p-8 overflow-y-auto dark">
@@ -247,9 +268,30 @@ const DataViewerPage: React.FC = () => {
                     </div>
                 ) : (
                     <div className="space-y-4">
-                        {captures.map(capture => (
-                            <CaptureAccordion key={capture.id} capture={capture} />
-                        ))}
+                        {captures.map(capture => {
+                            const fingerprint = getCaptureFingerprint(capture);
+                            const isNewGroup = !renderedFingerprints.has(fingerprint);
+                            if (isNewGroup) {
+                                renderedFingerprints.add(fingerprint);
+                            }
+                            const group = groupedCaptures[fingerprint] || [];
+
+                            return (
+                                <React.Fragment key={capture.id}>
+                                    {isNewGroup && (
+                                        <div className="pt-6">
+                                           <div className="relative text-center my-4">
+                                               <hr className="absolute top-1/2 left-0 w-full h-px bg-slate-700 -translate-y-1/2" />
+                                               <span className="relative bg-slate-900 px-4 text-sm font-semibold text-slate-400">
+                                                   Session from {capture.location.city} ({group.length} {group.length > 1 ? 'records' : 'record'})
+                                               </span>
+                                           </div>
+                                        </div>
+                                    )}
+                                    <CaptureAccordion capture={capture} />
+                                </React.Fragment>
+                            )
+                        })}
                     </div>
                 )}
             </div>
