@@ -260,8 +260,10 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview 
 
     isSavingRef.current = true;
     
+    const { status: _ignoredStatus, ...restOfData } = dataToSave;
+
     const finalData: any = {
-        ...dataToSave,
+        ...restOfData,
         redirectId: settingsToUse.id,
         status: isComplete ? 'completed' : 'incomplete',
         timestamp: Date.now(),
