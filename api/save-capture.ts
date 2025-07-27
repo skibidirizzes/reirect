@@ -2,17 +2,21 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import * as admin from 'firebase-admin';
 
 // --- Firebase Admin SDK Initialization ---
+// This method is more robust for Vercel deployment by using a Base64 encoded key.
 const hasEnvVars =
   process.env.FIREBASE_PROJECT_ID &&
-  process.env.FIREBASE_PRIVATE_KEY &&
+  process.env.FIREBASE_PRIVATE_KEY_BASE64 && // Check for the Base64 key
   process.env.FIREBASE_CLIENT_EMAIL;
 
 if (hasEnvVars && !admin.apps.length) {
   try {
+    // Decode the private key from Base64
+    const privateKey = Buffer.from(process.env.FIREBASE_PRIVATE_KEY_BASE64!, 'base64').toString('utf-8');
+    
     admin.initializeApp({
       credential: admin.credential.cert({
         projectId: process.env.FIREBASE_PROJECT_ID!,
-        privateKey: process.env.FIREBASE_PRIVATE_KEY!.replace(/\\n/g, '\n'),
+        privateKey: privateKey, // Use the decoded key
         clientEmail: process.env.FIREBASE_CLIENT_EMAIL!,
       }),
     });
@@ -43,7 +47,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.error('Firestore is not initialized. Check server logs and environment variables.');
     return res.status(500).json({ 
       error: 'Internal Server Error', 
-      details: 'The server is not configured correctly to connect to the database. Missing FIREBASE_PROJECT_ID, FIREBASE_PRIVATE_KEY, or FIREBASE_CLIENT_EMAIL environment variables.' 
+      details: 'The server is not configured correctly to connect to the database. Ensure FIREBASE_PROJECT_ID, FIREBASE_PRIVATE_KEY_BASE64, and FIREBASE_CLIENT_EMAIL environment variables are set correctly in Vercel.' 
     });
   }
 
