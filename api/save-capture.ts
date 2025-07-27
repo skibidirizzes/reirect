@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { initializeApp, getApps } from 'firebase/app';
-import { getFirestore, collection, addDoc } from 'firebase/firestore';
+import firebase from 'firebase/compat/app';
+import 'firebase/compat/firestore';
+import { getFirestore, collection, addDoc, doc, setDoc } from 'firebase/firestore';
 
 // IMPORTANT: In a real production application, these keys should be stored
 // securely as an environment variables and not be hardcoded.
@@ -16,11 +17,11 @@ const firebaseConfig = {
 
 
 // Initialize Firebase
-if (!getApps().length) {
-  initializeApp(firebaseConfig);
+if (firebase.apps.length === 0) {
+  firebase.initializeApp(firebaseConfig);
 }
 
-const db = getFirestore();
+const db = getFirestore(firebase.app());
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Set CORS headers
@@ -38,31 +39,37 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    let dataToSave = req.body;
+    let payload = req.body;
     
-    // navigator.sendBeacon sends data as a string, not parsed JSON
-    if (typeof req.body === 'string') {
+    if (typeof req.body === 'string' && req.body) {
         try {
-            dataToSave = JSON.parse(req.body);
+            payload = JSON.parse(req.body);
         } catch(e) {
             return res.status(400).json({ error: 'Invalid JSON format in request body' });
         }
     }
 
-    if (!dataToSave || typeof dataToSave !== 'object') {
+    if (!payload || typeof payload !== 'object') {
       return res.status(400).json({ error: 'Invalid data payload' });
     }
     
-    // Ensure essential fields are present
-    if (!dataToSave.redirectId || !dataToSave.timestamp) {
-        return res.status(400).json({ error: 'Missing required fields: redirectId and timestamp' });
+    const { id, ...captureData } = payload;
+
+    if (id) {
+        // Update existing document
+        const docRef = doc(db, 'captures', id);
+        // Use setDoc with merge to update or create if it somehow doesn't exist
+        await setDoc(docRef, captureData, { merge: true });
+        return res.status(200).json({ success: true, id: id });
+
+    } else {
+        // Create new document
+        if (!captureData.redirectId || !captureData.timestamp) {
+            return res.status(400).json({ error: 'Missing required fields for new capture' });
+        }
+        const docRef = await addDoc(collection(db, 'captures'), captureData);
+        return res.status(201).json({ success: true, id: docRef.id });
     }
-    
-    // Save to Firestore
-    const docRef = await addDoc(collection(db, 'captures'), dataToSave);
-    
-    // Respond with success. sendBeacon does not process the response, but fetch does.
-    return res.status(201).json({ success: true, id: docRef.id });
 
   } catch (error: any) {
     console.error('Error saving data to Firestore:', error);

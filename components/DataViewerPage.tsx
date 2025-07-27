@@ -190,9 +190,33 @@ const CaptureAccordion: React.FC<{ capture: CapturedData }> = ({ capture }) => {
     );
 };
 
-const getCaptureFingerprint = (capture: CapturedData) => {
-    return `${capture.ip}|${capture.userAgent}|${capture.language}`;
+const haversineDistance = (
+    coords1: { lat: number | null; lon: number | null },
+    coords2: { lat: number | null; lon: number | null }
+): number => {
+    if (coords1.lat === null || coords1.lon === null || coords2.lat === null || coords2.lon === null) {
+        return Infinity;
+    }
+
+    const toRad = (x: number) => (x * Math.PI) / 180;
+    const R = 6371; // Earth radius in km
+
+    const dLat = toRad(coords2.lat - coords1.lat);
+    const dLon = toRad(coords2.lon - coords1.lon);
+    const lat1 = toRad(coords1.lat);
+    const lat2 = toRad(coords2.lat);
+
+    const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.sin(dLon / 2) * Math.sin(dLon / 2) * Math.cos(lat1) * Math.cos(lat2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+    return R * c; // in km
 };
+
+const SESSION_TIMEOUT = 30 * 60 * 1000; // 30 minutes
+const MAX_DISTANCE_KM = 5; // 5 km
+
 
 const DataViewerPage: React.FC = () => {
     const { id } = useParams<{ id: string }>();
@@ -229,19 +253,44 @@ const DataViewerPage: React.FC = () => {
         fetchCaptures();
     }, [id, getConfig, clearUnreadCount]);
 
-    const groupedCaptures = React.useMemo(() => {
-        return captures.reduce((acc, capture) => {
-            const fingerprint = getCaptureFingerprint(capture);
-            if (!acc[fingerprint]) {
-                acc[fingerprint] = [];
+    const sessionizedCaptures = React.useMemo(() => {
+        if (captures.length === 0) return [];
+
+        // Sort ascending to process chronologically for session logic
+        const sorted = [...captures].sort((a, b) => a.timestamp - b.timestamp);
+
+        let sessionId = 1;
+        const withSessionId = sorted.map((capture, index) => {
+            if (index === 0) {
+                return { ...capture, sessionId };
             }
-            acc[fingerprint].push(capture);
+
+            const prevCapture = sorted[index - 1];
+            const timeDiff = capture.timestamp - prevCapture.timestamp;
+            const distance = haversineDistance(capture.location, prevCapture.location);
+            const userAgentDiff = capture.userAgent !== prevCapture.userAgent;
+            const ipDiff = capture.ip !== prevCapture.ip;
+            
+            // If any of these conditions are met, start a new session
+            if (timeDiff > SESSION_TIMEOUT || distance > MAX_DISTANCE_KM || userAgentDiff || ipDiff) {
+                sessionId++;
+            }
+            
+            return { ...capture, sessionId };
+        });
+
+        // Group by session ID
+        const groups = withSessionId.reduce((acc, capture) => {
+            const key = `session-${capture.sessionId}`;
+            (acc[key] = acc[key] || []).push(capture);
             return acc;
-        }, {} as Record<string, CapturedData[]>);
+        }, {} as Record<string, (CapturedData & { sessionId: number })[]>);
+
+        // Convert to array of groups and sort by most recent first
+        return Object.values(groups).sort((a, b) => b[0].timestamp - a[0].timestamp);
+
     }, [captures]);
 
-    const renderedFingerprints = new Set<string>();
-    
     return (
         <div className="w-full h-full p-4 sm:p-6 lg:p-8 overflow-y-auto dark">
             <div className="max-w-4xl mx-auto">
@@ -267,30 +316,24 @@ const DataViewerPage: React.FC = () => {
                         <h2 className="text-2xl font-bold text-white">{t('data_viewer_no_data')}</h2>
                     </div>
                 ) : (
-                    <div className="space-y-4">
-                        {captures.map(capture => {
-                            const fingerprint = getCaptureFingerprint(capture);
-                            const isNewGroup = !renderedFingerprints.has(fingerprint);
-                            if (isNewGroup) {
-                                renderedFingerprints.add(fingerprint);
-                            }
-                            const group = groupedCaptures[fingerprint] || [];
-
-                            return (
-                                <React.Fragment key={capture.id}>
-                                    {isNewGroup && (
-                                        <div className="pt-6">
-                                           <div className="relative text-center my-4">
-                                               <hr className="absolute top-1/2 left-0 w-full h-px bg-slate-700 -translate-y-1/2" />
-                                               <span className="relative bg-slate-900 px-4 text-sm font-semibold text-slate-400">
-                                                   Session from {capture.location.city} ({group.length} {group.length > 1 ? 'records' : 'record'})
-                                               </span>
-                                           </div>
-                                        </div>
-                                    )}
-                                    <CaptureAccordion capture={capture} />
-                                </React.Fragment>
-                            )
+                    <div className="space-y-6">
+                        {sessionizedCaptures.map((group, index) => {
+                           const firstCaptureInGroup = group[0];
+                           return (
+                                <div key={`session-group-${index}`}>
+                                    <div className="relative text-center my-4">
+                                        <hr className="absolute top-1/2 left-0 w-full h-px bg-slate-700 -translate-y-1/2" />
+                                        <span className="relative bg-slate-900 px-4 text-sm font-semibold text-slate-400">
+                                            Session from {firstCaptureInGroup.location.city} ({group.length} {group.length > 1 ? 'records' : 'record'})
+                                        </span>
+                                    </div>
+                                    <div className="space-y-4">
+                                        {group.map(capture => (
+                                            <CaptureAccordion key={capture.id} capture={capture} />
+                                        ))}
+                                    </div>
+                                </div>
+                           )
                         })}
                     </div>
                 )}
