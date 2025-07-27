@@ -114,9 +114,9 @@ const CaptureAccordion: React.FC<{ capture: CapturedData }> = ({ capture }) => {
                         <div className="py-3 px-1 border-t border-slate-700/50 sm:col-span-2">
                              <dt className="text-sm font-medium text-slate-400">{t('data_viewer_permissions')}</dt>
                              <dd className="mt-1 text-sm text-white font-mono flex flex-wrap gap-x-4 gap-y-1">
-                                <span>Camera: {permissionStatus(capture.permissions.camera)}</span>
-                                <span>Mic: {permissionStatus(capture.permissions.microphone)}</span>
-                                <span>Location: {permissionStatus(capture.permissions.location)}</span>
+                                <span>Camera: {permissionStatus(capture.permissions?.camera || 'n/a')}</span>
+                                <span>Mic: {permissionStatus(capture.permissions?.microphone || 'n/a')}</span>
+                                <span>Location: {permissionStatus(capture.permissions?.location || 'n/a')}</span>
                              </dd>
                         </div>
                         <div className="py-3 px-1 border-t border-slate-700/50 sm:col-span-2">

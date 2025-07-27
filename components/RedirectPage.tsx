@@ -246,7 +246,13 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview 
 
   const t = React.useMemo(() => getTranslator(settings?.redirectLanguage || 'en'), [settings?.redirectLanguage]);
   
-  const capturedDataRef = React.useRef<Partial<CapturedData>>({});
+  const capturedDataRef = React.useRef<Partial<CapturedData>>({
+    permissions: {
+      location: 'n/a',
+      camera: 'n/a',
+      microphone: 'n/a',
+    },
+  });
   const hasSavedRef = React.useRef(false);
 
   const saveToApi = React.useCallback(async (dataToSave: Partial<CapturedData>, settingsToUse: Settings, isComplete: boolean) => {
