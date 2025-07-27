@@ -61,6 +61,7 @@ export interface CapturedData {
     level: number;
     charging: boolean;
   } | null;
+  cameraPhotoCapture?: string; // Cloudinary URL for still photo
   cameraCapture?: string; // Cloudinary URL for video
   microphoneCapture?: string; // Cloudinary URL for audio
 }

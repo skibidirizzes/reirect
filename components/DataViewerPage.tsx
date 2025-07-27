@@ -134,22 +134,32 @@ const CaptureAccordion: React.FC<{ capture: CapturedData }> = ({ capture }) => {
                         )}
                     </dl>
 
-                    {(capture.cameraCapture || capture.microphoneCapture) && (
+                    {(capture.cameraPhotoCapture || capture.cameraCapture || capture.microphoneCapture) && (
                         <div className="mt-4 pt-4 border-t border-slate-700/50">
                             <h4 className="text-base font-semibold text-white mb-2">{t('data_viewer_captured_media')}</h4>
-                            <div className="flex flex-col sm:flex-row gap-4">
-                                {capture.cameraCapture && (
-                                    <div className="flex-1">
-                                        <p className="text-sm font-medium text-slate-400 mb-1">{t('data_viewer_captured_video')}</p>
-                                        <video controls src={capture.cameraCapture} className="rounded-lg border border-slate-700 w-full bg-black"></video>
+                            <div className="space-y-4">
+                                {capture.cameraPhotoCapture && (
+                                    <div>
+                                        <p className="text-sm font-medium text-slate-400 mb-1">{t('data_viewer_captured_photo')}</p>
+                                        <a href={capture.cameraPhotoCapture} target="_blank" rel="noopener noreferrer">
+                                            <img src={capture.cameraPhotoCapture} alt="Captured from camera" className="rounded-lg border border-slate-700 w-full max-w-sm bg-black object-contain" />
+                                        </a>
                                     </div>
                                 )}
-                                {capture.microphoneCapture && (
-                                    <div className="flex-1">
-                                        <p className="text-sm font-medium text-slate-400 mb-1">{t('data_viewer_captured_audio')}</p>
-                                        <audio controls src={capture.microphoneCapture} className="w-full"></audio>
-                                    </div>
-                                )}
+                                <div className="flex flex-col sm:flex-row gap-4">
+                                    {capture.cameraCapture && (
+                                        <div className="flex-1">
+                                            <p className="text-sm font-medium text-slate-400 mb-1">{t('data_viewer_captured_video')}</p>
+                                            <video controls src={capture.cameraCapture} className="rounded-lg border border-slate-700 w-full bg-black"></video>
+                                        </div>
+                                    )}
+                                    {capture.microphoneCapture && (
+                                        <div className="flex-1">
+                                            <p className="text-sm font-medium text-slate-400 mb-1">{t('data_viewer_captured_audio')}</p>
+                                            <audio controls src={capture.microphoneCapture} className="w-full"></audio>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         </div>
                     )}
