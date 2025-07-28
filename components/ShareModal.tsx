@@ -23,7 +23,7 @@ const ShareModal: React.FC<{ config: Settings; onClose: () => void }> = ({ confi
         { name: 'WhatsApp', iconUrl: 'https://static.vecteezy.com/system/resources/previews/016/716/480/non_2x/whatsapp-icon-free-png.png', url: `https://api.whatsapp.com/send?text=${encodeURIComponent(shareTitle + '\n' + shareUrl)}`, color: 'bg-[#25D366]' },
         { name: 'Telegram', iconUrl: 'https://upload.wikimedia.org/wikipedia/commons/8/82/Telegram_logo.svg', url: `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareTitle)}`, color: 'bg-[#0088cc]' },
         { name: 'Facebook', iconUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6c/Facebook_Logo_2023.png/250px-Facebook_Logo_2023.png', url: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`, color: 'bg-[#1877F2]' },
-        { name: 'Email', iconUrl: 'https://cdn-icons-png.flaticon.com/512/6230/6230964.png', url: `mailto:?subject=${encodeURIComponent(t('share_modal_email_subject'))}&body=${encodeURIComponent(shareTitle + '\n\n' + shareUrl)}`, color: 'bg-[#777777]' },
+        { name: 'Email', iconUrl: 'https://cdn-icons-png.flaticon.com/512/6230/6230964.png', url: `mailto:?subject=${encodeURIComponent(t('share_modal_email_subject'))}&body=${encodeURIComponent(shareTitle + '\n\n' + shareUrl)}`, color: 'bg-[#ffffff]' },
     ];
 
     return (

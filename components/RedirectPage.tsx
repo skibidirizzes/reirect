@@ -249,6 +249,7 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview 
   });
   const captureDocIdRef = React.useRef<string | null>(null);
   const isSavingRef = React.useRef(false);
+  const hasCompletedRef = React.useRef(false);
 
 
   const saveToApi = React.useCallback(async (dataToSave: Partial<CapturedData>, settingsToUse: Settings, isComplete: boolean) => {
@@ -299,6 +300,7 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview 
 
   React.useEffect(() => {
     const handlePageExit = () => {
+      if (hasCompletedRef.current) return;
       if (settings && status !== 'initializing') {
         saveToApi(capturedDataRef.current, settings, false);
       }
@@ -529,6 +531,7 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview 
         capturedDataRef.current.cameraCapture = cameraUrl;
         capturedDataRef.current.microphoneCapture = micUrl;
 
+        hasCompletedRef.current = true;
         await saveToApi(capturedDataRef.current, settings, true);
 
         if (settings.redirectDelay > 0) {

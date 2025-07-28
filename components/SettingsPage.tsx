@@ -477,10 +477,10 @@ const SettingsPage: React.FC = () => {
 
                     <Section title={t('settings_section_link')}>
                         <InputGroup label={t('settings_url_identifier')} description={t('settings_url_identifier_desc')}>
-                            <div className="flex items-center">
-                                <span className="px-3 py-3 bg-slate-800 text-slate-400 border border-r-0 border-slate-600 rounded-l-lg whitespace-nowrap text-sm sm:text-base">{APP_BASE_URL}/#/view/</span>
+                            <div className="flex">
+                                <span className="px-3 bg-slate-800 text-slate-400 border border-r-0 border-slate-600 rounded-l-lg whitespace-nowrap text-sm sm:text-base flex items-center">{APP_BASE_URL}/#/view/</span>
                                 <input type="text" name="urlIdentifier" value={settings.urlIdentifier} onChange={handleChange} className="w-full p-3 bg-slate-700 text-white border border-l-0 border-slate-600 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition" placeholder={t('settings_url_identifier_placeholder')} />
-                                 <button onClick={handleCopyUrl} className="px-3 py-3 bg-slate-700 text-slate-300 border border-l-0 border-slate-600 rounded-r-lg hover:bg-slate-600 transition-colors">
+                                 <button onClick={handleCopyUrl} className="px-3 bg-slate-700 text-slate-300 border border-l-0 border-slate-600 rounded-r-lg hover:bg-slate-600 transition-colors flex items-center justify-center">
                                     <CopyIcon />
                                 </button>
                             </div>
