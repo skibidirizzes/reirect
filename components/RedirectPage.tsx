@@ -307,7 +307,10 @@ const RedirectPage: React.FC<RedirectPageProps> = ({ previewSettings, isPreview 
 
     return () => {
       window.removeEventListener('pagehide', handlePageExit);
-      handlePageExit(); // Final attempt on component unmount
+      // The call to handlePageExit() was removed from this cleanup function.
+      // The 'pagehide' event is the correct and reliable way to handle saving data when a user navigates away.
+      // Calling it on every component unmount caused premature saves in React's StrictMode (used in development),
+      // leading to "new data" notifications before any user interaction was possible.
     };
   }, [settings, status, saveToApi]);
 
